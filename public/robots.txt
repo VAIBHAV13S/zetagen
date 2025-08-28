@@ -1,0 +1,37 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://zetaforge-ai.com/sitemap.xml
+
+# Optimize crawling
+Crawl-delay: 1
+
+# Block access to sensitive areas
+Disallow: /api/
+Disallow: /admin/
+Disallow: /_next/
+Disallow: /static/
+
+# Allow access to main sections
+Allow: /
+Allow: /generator
+Allow: /gallery
+Allow: /about
+Allow: /docs
+
+# Social media crawlers
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /

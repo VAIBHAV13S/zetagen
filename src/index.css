@@ -1,0 +1,150 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Futuristic AI-powered design system with glassmorphism and neon accents */
+
+@layer base {
+  :root {
+    /* Core futuristic colors - dark theme by default */
+    --background: 240 10% 3.9%;
+    --background-secondary: 240 8% 6%;
+    --foreground: 0 0% 98%;
+
+    /* Glass morphism surfaces */
+    --glass-primary: 240 10% 8%;
+    --glass-secondary: 240 8% 12%;
+    --glass-accent: 240 6% 16%;
+
+    /* Neon accent colors */
+    --neon-cyan: 188 100% 50%;
+    --neon-purple: 258 90% 66%;
+    --neon-pink: 320 100% 60%;
+    --neon-blue: 212 100% 48%;
+
+    /* Primary brand colors */
+    --primary: 188 100% 50%;
+    --primary-foreground: 240 10% 3.9%;
+    --primary-glow: 188 100% 50%;
+
+    /* Secondary colors */
+    --secondary: 240 8% 12%;
+    --secondary-foreground: 0 0% 98%;
+
+    /* UI surfaces */
+    --card: 240 8% 8%;
+    --card-foreground: 0 0% 95%;
+    --popover: 240 8% 8%;
+    --popover-foreground: 0 0% 95%;
+
+    /* Interactive elements */
+    --muted: 240 6% 16%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 258 90% 66%;
+    --accent-foreground: 0 0% 98%;
+
+    /* Status colors */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 98%;
+
+    /* Borders and inputs */
+    --border: 240 8% 20%;
+    --input: 240 8% 16%;
+    --ring: 188 100% 50%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(188 100% 50%) 0%, hsl(258 90% 66%) 100%);
+    --gradient-secondary: linear-gradient(135deg, hsl(258 90% 66%) 0%, hsl(320 100% 60%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(240 10% 3.9%) 0%, hsl(240 8% 8%) 50%, hsl(240 10% 3.9%) 100%);
+    --gradient-glass: linear-gradient(135deg, hsla(240, 8%, 12%, 0.3) 0%, hsla(240, 6%, 16%, 0.1) 100%);
+
+    /* Shadows and glows */
+    --glow-primary: 0 0 40px hsl(188 100% 50% / 0.3);
+    --glow-secondary: 0 0 40px hsl(258 90% 66% / 0.3);
+    --glow-accent: 0 0 40px hsl(320 100% 60% / 0.3);
+    --shadow-glass: 0 8px 32px hsla(0, 0%, 0%, 0.37);
+
+    /* Animation easing */
+    --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-elastic: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    background: var(--gradient-hero);
+    min-height: 100vh;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-background-secondary;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-primary/50;
+  }
+
+  /* Glass morphism utilities */
+  .glass {
+    backdrop-filter: blur(20px);
+    background: var(--gradient-glass);
+    border: 1px solid hsl(240 8% 20% / 0.3);
+  }
+
+  .glass-card {
+    backdrop-filter: blur(16px);
+    background: hsla(240, 8%, 8%, 0.7);
+    border: 1px solid hsl(240 8% 20% / 0.2);
+    box-shadow: var(--shadow-glass);
+  }
+
+  /* Neon glow effects */
+  .glow-primary {
+    box-shadow: var(--glow-primary);
+  }
+
+  .glow-secondary {
+    box-shadow: var(--glow-secondary);
+  }
+
+  .glow-accent {
+    box-shadow: var(--glow-accent);
+  }
+
+  /* Interactive animations */
+  .hover-lift {
+    transition: transform 0.3s var(--ease-smooth), box-shadow 0.3s var(--ease-smooth);
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--glow-primary);
+  }
+
+  /* Background patterns */
+  .grid-pattern {
+    background-image: 
+      linear-gradient(hsl(240 8% 20% / 0.1) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(240 8% 20% / 0.1) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
+}

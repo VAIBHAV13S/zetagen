@@ -1,0 +1,52 @@
+{
+  "name": "zeta-gen-contracts",
+  "version": "1.0.0",
+  "description": "Smart contracts for Zeta-Gen AI-powered NFT platform",
+  "main": "index.js",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:testnet": "hardhat run scripts/deploy.js --network zetachain_testnet",
+    "deploy:mainnet": "hardhat run scripts/deploy.js --network zetachain_mainnet",
+    "deploy:local": "hardhat run scripts/deploy.js --network hardhat",
+    "verify:testnet": "hardhat verify --network zetachain_testnet",
+    "verify:mainnet": "hardhat verify --network zetachain_mainnet",
+    "node": "hardhat node",
+    "clean": "hardhat clean"
+  },
+  "keywords": [
+    "blockchain",
+    "ethereum",
+    "hardhat",
+    "smart-contracts",
+    "nft",
+    "zetachain",
+    "ai"
+  ],
+  "author": "Zeta-Gen Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-chai-matchers": "^2.0.0",
+    "@nomicfoundation/hardhat-ethers": "^3.0.0",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.0",
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@nomicfoundation/hardhat-verify": "^2.0.0",
+    "@typechain/ethers-v6": "^0.5.0",
+    "@typechain/hardhat": "^9.0.0",
+    "@types/chai": "^4.2.0",
+    "@types/mocha": ">=9.1.0",
+    "chai": "^4.2.0",
+    "hardhat": "^2.19.0",
+    "hardhat-gas-reporter": "^1.0.8",
+    "solidity-coverage": "^0.8.1",
+    "typechain": "^8.3.0",
+    "typescript": ">=4.5.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.0",
+    "@zetachain/protocol-contracts": "^13.0.0",
+    "@zetachain/toolkit": "^16.1.1",
+    "dotenv": "^16.3.1",
+    "ethers": "^6.15.0"
+  }
+}

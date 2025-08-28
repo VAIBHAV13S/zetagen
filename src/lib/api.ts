@@ -1,0 +1,36 @@
+// Backend API endpoints
+const API_BASE_URL = process.env.NODE_ENV === 'production' 
+  ? 'https://your-backend-domain.com/api' 
+  : 'http://localhost:5000/api';
+
+export const API_ENDPOINTS = {
+  generateAsset: `${API_BASE_URL}/generate-asset`,
+  getAssets: `${API_BASE_URL}/assets`,
+  mintAsset: `${API_BASE_URL}/mint`,
+  suggestPrompts: `${API_BASE_URL}/suggest`,
+}
+
+// Helper function to call backend APIs
+export async function callEdgeFunction(endpoint: string, data?: any) {
+  try {
+    console.log('API call to:', endpoint, 'with data:', data);
+    
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: data ? JSON.stringify(data) : undefined,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('API call failed:', error);
+    throw error;
+  }
+}
