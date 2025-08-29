@@ -25,10 +25,14 @@ services:
         sync: false
       - key: ZETACHAIN_CHAIN_ID
         value: 7001
-      - key: UNIVERSAL_CONTRACT_V2
+      - key: ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS
         value: 0xd306C9a30359EB053F23C92F754206d2fe0Ed93e
-      - key: UNIVERSAL_CONTRACT_LEGACY
+      - key: ZETAFORGE_LEGACY_CONTRACT_ADDRESS
         value: 0xDE1bE2A2bc97D2B42cDB61812d90214bB2778326
+      - key: UNIVERSAL_MODE_ENABLED
+        value: true
+      - key: CROSS_CHAIN_ENABLED
+        value: true
       - key: RATE_LIMIT_WINDOW
         value: 900000
       - key: RATE_LIMIT_MAX_REQUESTS
