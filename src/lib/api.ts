@@ -1,7 +1,8 @@
 // Backend API endpoints
-const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://zetaforge-backend.onrender.com/api' 
-  : 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
+  (import.meta.env.MODE === 'production' 
+    ? 'https://zetaforge-backend.onrender.com/api' 
+    : 'http://localhost:5000/api');
 
 export const API_ENDPOINTS = {
   generateAsset: `${API_BASE_URL}/generate-asset`,
