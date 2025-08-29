@@ -21,6 +21,8 @@ services:
         sync: false
       - key: ZETACHAIN_RPC_URL
         value: https://zetachain-athens-evm.blockpi.network/v1/rpc/public
+      - key: ZETACHAIN_PRIVATE_KEY
+        sync: false
       - key: ZETACHAIN_CHAIN_ID
         value: 7001
       - key: UNIVERSAL_CONTRACT_V2

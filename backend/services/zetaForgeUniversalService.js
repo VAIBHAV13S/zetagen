@@ -45,7 +45,19 @@ const ENHANCED_UNIVERSAL_V2_ABI = [
 class EnhancedZetaForgeUniversalService {
     constructor() {
         this.provider = new ethers.JsonRpcProvider(process.env.ZETACHAIN_RPC_URL);
-        this.wallet = new ethers.Wallet(process.env.ZETACHAIN_PRIVATE_KEY, this.provider);
+        
+        // Check if private key is provided and valid
+        const privateKey = process.env.ZETACHAIN_PRIVATE_KEY;
+        if (!privateKey) {
+            throw new Error('ZETACHAIN_PRIVATE_KEY environment variable is required');
+        }
+        
+        // Validate private key format
+        if (!privateKey.startsWith('0x') || privateKey.length !== 66) {
+            throw new Error('ZETACHAIN_PRIVATE_KEY must be a valid 64-character hex string starting with 0x');
+        }
+        
+        this.wallet = new ethers.Wallet(privateKey, this.provider);
         
         // Universal App V2 contract with enhanced features
         this.universalContract = new ethers.Contract(
