@@ -1,6 +1,6 @@
 // Backend API endpoints
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://your-backend-domain.com/api' 
+  ? 'https://zetaforge-backend.onrender.com/api' 
   : 'http://localhost:5000/api';
 
 export const API_ENDPOINTS = {
