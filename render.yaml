@@ -11,7 +11,7 @@ services:
         value: production
       - key: PORT
         value: 10000
-      - key: CORS_ORIGIN
+      - key: FRONTEND_URL
         value: https://zetaforge-universal-app-v2.vercel.app
       - key: MONGODB_URI
         fromDatabase:
@@ -23,8 +23,6 @@ services:
         value: https://zetachain-athens-evm.blockpi.network/v1/rpc/public
       - key: ZETACHAIN_PRIVATE_KEY
         sync: false
-      - key: ZETACHAIN_CHAIN_ID
-        value: 7001
       - key: ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS
         value: 0xd306C9a30359EB053F23C92F754206d2fe0Ed93e
       - key: ZETAFORGE_LEGACY_CONTRACT_ADDRESS
@@ -33,16 +31,10 @@ services:
         value: true
       - key: CROSS_CHAIN_ENABLED
         value: true
-      - key: RATE_LIMIT_WINDOW
+      - key: RATE_LIMIT_WINDOW_MS
         value: 900000
       - key: RATE_LIMIT_MAX_REQUESTS
         value: 100
-      - key: CACHE_TTL
-        value: 300000
-      - key: MAX_RETRIES
-        value: 3
-      - key: RETRY_DELAY
-        value: 1000
 
 databases:
   - name: zetaforge-mongodb
