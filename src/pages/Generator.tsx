@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -7,12 +8,11 @@ import { useStore } from '@/store/useStore';
 import { useToast } from '@/hooks/use-toast';
 import { useSEO, seoConfigs } from '@/hooks/useSEO';
 import { connectWallet, watchAccountChanges, watchChainChanges } from '@/lib/wallet';
-import { Sparkles, Loader2, Download, Share, Coins } from 'lucide-react';
+import { Sparkles, Loader2, Download, Share, Coins, ArrowLeft } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
-const Generator = () => {
-  // SEO optimization
-  useSEO(seoConfigs.generator);
+const Generator: React.FC = () => {
+  const navigate = useNavigate();
   const [prompt, setPrompt] = useState('');
   const [suggestions] = useState([
     'Cyberpunk city with neon lights',
@@ -35,6 +35,8 @@ const Generator = () => {
   
   const { toast } = useToast();
 
+  useSEO(seoConfigs.generator);
+
   // Watch for account and chain changes
   useEffect(() => {
     const handleAccountsChanged = (accounts: string[]) => {
@@ -51,7 +53,6 @@ const Generator = () => {
     };
 
     const handleChainChanged = (chainId: string) => {
-      // ZetaChain testnet chain ID is 0x1B59 (7001)
       if (chainId !== '0x1B59') {
         toast({
           title: "Wrong Network",
@@ -72,7 +73,7 @@ const Generator = () => {
     };
   }, [setWalletConnected, disconnectWallet, toast]);
 
-  const handleGenerate = async () => {
+  const handleGenerate = useCallback(async () => {
     if (!prompt.trim()) {
       toast({
         title: "Enter a prompt",
@@ -91,33 +92,48 @@ const Generator = () => {
       return;
     }
 
-    await generateAsset(prompt);
-    toast({
-      title: "Asset generated!",
-      description: "Your AI-powered asset has been created successfully",
-    });
-  };
+    try {
+      await generateAsset(prompt);
+      toast({
+        title: "Asset generated!",
+        description: "Your AI-powered asset has been created successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Generation Failed",
+        description: error.message || "Failed to generate asset",
+        variant: "destructive"
+      });
+    }
+  }, [prompt, isWalletConnected, generateAsset, toast]);
 
-  const handleMint = async () => {
+  const handleMint = useCallback(async () => {
     if (!currentAsset) return;
 
-    await mintAsset(currentAsset.id);
-    
-    // Trigger confetti animation
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 },
-      colors: ['#00D4FF', '#8B5FE6', '#FF0080']
-    });
+    try {
+      await mintAsset(currentAsset.id);
+      
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#00D4FF', '#8B5FE6', '#FF0080']
+      });
 
-    toast({
-      title: "NFT Minted!",
-      description: "Your asset has been minted as an NFT successfully",
-    });
-  };
+      toast({
+        title: "NFT Minted!",
+        description: "Your asset has been minted as an NFT successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Minting Failed",
+        description: error.message || "Failed to mint asset",
+        variant: "destructive"
+      });
+    }
+  }, [currentAsset, mintAsset, toast]);
 
-  const handleConnectWallet = async () => {
+  const handleConnectWallet = useCallback(async () => {
     try {
       const address = await connectWallet();
       setWalletConnected(address);
@@ -133,9 +149,9 @@ const Generator = () => {
         variant: "destructive"
       });
     }
-  };
+  }, [setWalletConnected, toast]);
 
-  const handleDownload = async () => {
+  const handleDownload = useCallback(async () => {
     if (!currentAsset?.imageUrl) {
       toast({
         title: "Download Failed",
@@ -146,9 +162,6 @@ const Generator = () => {
     }
 
     try {
-      console.log('� Starting download for:', currentAsset.imageUrl);
-      
-      // Try to fetch the image with CORS mode
       const response = await fetch(currentAsset.imageUrl, { 
         mode: 'cors',
         credentials: 'omit',
@@ -162,45 +175,24 @@ const Generator = () => {
       }
 
       const blob = await response.blob();
-      console.log('� Downloaded blob:', {
-        size: blob.size,
-        type: blob.type
-      });
-
-      // Determine file extension based on content type or URL
-      let fileExtension = '.png'; // default
+      
+      let fileExtension = '.png';
       if (blob.type.includes('jpeg') || blob.type.includes('jpg')) {
         fileExtension = '.jpg';
-      } else if (blob.type.includes('png')) {
-        fileExtension = '.png';
       } else if (blob.type.includes('webp')) {
         fileExtension = '.webp';
       } else if (blob.type.includes('gif')) {
         fileExtension = '.gif';
-      } else {
-        // Try to guess from URL
-        const urlLower = currentAsset.imageUrl.toLowerCase();
-        if (urlLower.includes('.jpg') || urlLower.includes('.jpeg')) {
-          fileExtension = '.jpg';
-        } else if (urlLower.includes('.webp')) {
-          fileExtension = '.webp';
-        } else if (urlLower.includes('.gif')) {
-          fileExtension = '.gif';
-        }
       }
 
-      // Create download link
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.download = `zetaforge-${currentAsset.id || 'asset'}${fileExtension}`;
       
-      // Trigger download
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
-      // Clean up
       window.URL.revokeObjectURL(url);
 
       toast({
@@ -208,12 +200,9 @@ const Generator = () => {
         description: `Image saved as ${link.download}`,
       });
 
-      console.log('✅ Download completed successfully');
-
     } catch (error) {
-      console.error('❌ Download failed:', error);
+      console.error('Download failed:', error);
       
-      // Fallback: try opening in new tab
       try {
         window.open(currentAsset.imageUrl, '_blank');
         toast({
@@ -228,9 +217,9 @@ const Generator = () => {
         });
       }
     }
-  };
+  }, [currentAsset, toast]);
 
-  const handleShare = async () => {
+  const handleShare = useCallback(async () => {
     if (!currentAsset) return;
 
     const shareData = {
@@ -247,7 +236,6 @@ const Generator = () => {
           description: "Asset shared successfully",
         });
       } else {
-        // Fallback: copy to clipboard
         await navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
         toast({
           title: "Copied to Clipboard",
@@ -261,7 +249,7 @@ const Generator = () => {
         variant: "destructive"
       });
     }
-  };
+  }, [currentAsset, toast]);
 
   return (
     <div className="min-h-screen pt-20">
@@ -273,15 +261,26 @@ const Generator = () => {
           className="max-w-4xl mx-auto"
         >
           {/* Header */}
-          <div className="text-center mb-12">
-            <h1 className="text-4xl lg:text-5xl font-bold mb-4">
-              <span className="bg-gradient-primary bg-clip-text text-transparent">
-                AI Asset Generator
-              </span>
-            </h1>
-            <p className="text-xl text-muted-foreground">
-              Transform your imagination into digital assets with the power of AI
-            </p>
+          <div className="mb-12">
+            <Button 
+              onClick={() => navigate('/')}
+              variant="ghost" 
+              className="mb-6"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Home
+            </Button>
+
+            <div className="text-center">
+              <h1 className="text-4xl lg:text-5xl font-bold mb-4">
+                <span className="bg-gradient-primary bg-clip-text text-transparent">
+                  AI Asset Generator
+                </span>
+              </h1>
+              <p className="text-xl text-muted-foreground">
+                Transform your imagination into digital assets with the power of AI
+              </p>
+            </div>
           </div>
 
           {/* Generator Interface */}
@@ -399,26 +398,15 @@ const Generator = () => {
                     >
                       {/* Generated Image */}
                       <div className="relative group">
-                        {currentAsset.imageUrl ? (
-                          <img
-                            src={currentAsset.imageUrl}
-                            alt={currentAsset.prompt}
-                            className="w-full rounded-lg shadow-glass"
-                            onLoad={() => console.log('✅ Image loaded successfully:', currentAsset.imageUrl)}
-                            onError={(e) => {
-                              console.error('❌ Image failed to load:', currentAsset.imageUrl);
-                              console.error('Error details:', e);
-                              // Show a placeholder if image fails
-                              e.currentTarget.src = 'https://via.placeholder.com/400x400/f0f0f0/666?text=Image+Not+Available';
-                            }}
-                            style={{ minHeight: '200px', backgroundColor: '#f0f0f0' }}
-                          />
-                        ) : (
-                          <div className="w-full h-48 bg-gray-200 rounded-lg flex items-center justify-center">
-                            <p className="text-gray-500">No image URL available</p>
-                            <p className="text-xs text-gray-400 mt-1">Check console for debugging info</p>
-                          </div>
-                        )}
+                        <img
+                          src={currentAsset.imageUrl}
+                          alt={currentAsset.prompt}
+                          className="w-full rounded-lg shadow-glass"
+                          onError={(e) => {
+                            e.currentTarget.src = 'https://via.placeholder.com/400x400/f0f0f0/666?text=Image+Not+Available';
+                          }}
+                          loading="lazy"
+                        />
                         <div className="absolute inset-0 bg-gradient-primary opacity-0 group-hover:opacity-10 transition-opacity rounded-lg" />
                       </div>
 

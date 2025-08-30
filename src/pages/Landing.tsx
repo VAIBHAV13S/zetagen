@@ -1,5 +1,6 @@
+import React, { useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useStore } from '@/store/useStore';
@@ -8,19 +9,63 @@ import { useSEO, seoConfigs } from '@/hooks/useSEO';
 import { connectWallet, isMetaMaskInstalled } from '@/lib/wallet';
 import { WalletStatus } from '@/components/ui/wallet-status';
 import { WalletDebug } from '@/components/ui/wallet-debug';
-import { ArrowRight, Sparkles, Zap, Shield, Globe, AlertCircle } from 'lucide-react';
+import { ArrowRight, Sparkles, Zap, Shield, Globe } from 'lucide-react';
 import heroImage from '@/assets/hero-image.jpg';
 
-const Landing = () => {
+// Animation variants
+const fadeInUp = {
+  initial: { opacity: 0, y: 30 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.6, ease: "easeOut" }
+};
+
+const fadeInLeft = {
+  initial: { opacity: 0, x: -50 },
+  animate: { opacity: 1, x: 0 },
+  transition: { duration: 0.8, ease: "easeOut" }
+};
+
+const fadeInRight = {
+  initial: { opacity: 0, x: 50 },
+  animate: { opacity: 1, x: 0 },
+  transition: { duration: 0.8, delay: 0.3 }
+};
+
+const staggerContainer = {
+  animate: {
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+};
+
+const Landing: React.FC = () => {
+  const navigate = useNavigate();
   const { isWalletConnected, walletAddress, connectWallet: setWalletConnected } = useStore();
   const { toast } = useToast();
 
-  // SEO optimization
   useSEO(seoConfigs.home);
 
-  const handleConnectWallet = async () => {
+  const features = useMemo(() => [
+    {
+      icon: Sparkles,
+      title: 'AI-Powered Generation',
+      description: 'Create stunning digital assets using advanced AI models with state-of-the-art algorithms',
+    },
+    {
+      icon: Globe,
+      title: 'Cross-Chain Minting',
+      description: 'Seamlessly mint your assets across multiple blockchain networks with one click',
+    },
+    {
+      icon: Shield,
+      title: 'Secure & Decentralized',
+      description: 'Your assets are protected by blockchain technology and distributed infrastructure',
+    },
+  ], []);
+
+  const handleConnectWallet = useCallback(async () => {
     try {
-      // Check if MetaMask is installed
       if (!isMetaMaskInstalled()) {
         toast({
           title: "MetaMask Required",
@@ -32,6 +77,7 @@ const Landing = () => {
 
       const address = await connectWallet();
       setWalletConnected(address);
+      
       toast({
         title: "Wallet Connected!",
         description: `Connected to ${address.slice(0, 6)}...${address.slice(-4)}`,
@@ -39,65 +85,59 @@ const Landing = () => {
     } catch (error: any) {
       console.error('Wallet connection failed:', error);
       
-      let errorMessage = "Failed to connect wallet. Please try again.";
-      
-      if (error.message.includes('MetaMask not found')) {
-        errorMessage = "MetaMask extension not found. Please install MetaMask.";
-      } else if (error.message.includes('User rejected')) {
-        errorMessage = "Wallet connection was cancelled by user.";
-      } else if (error.message.includes('No accounts found')) {
-        errorMessage = "No accounts found. Please unlock MetaMask and try again.";
-      } else if (error.message.includes('ZetaChain network')) {
-        errorMessage = "Failed to switch to ZetaChain network. Please add it manually in MetaMask.";
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
+      const getErrorMessage = (error: any): string => {
+        if (error.message?.includes('MetaMask not found')) {
+          return "MetaMask extension not found. Please install MetaMask.";
+        }
+        if (error.message?.includes('User rejected')) {
+          return "Wallet connection was cancelled by user.";
+        }
+        if (error.message?.includes('No accounts found')) {
+          return "No accounts found. Please unlock MetaMask and try again.";
+        }
+        if (error.message?.includes('ZetaChain network')) {
+          return "Failed to switch to ZetaChain network. Please add it manually in MetaMask.";
+        }
+        return error.message || "Failed to connect wallet. Please try again.";
+      };
       
       toast({
-        title: "Connection failed",
-        description: errorMessage,
+        title: "Connection Failed",
+        description: getErrorMessage(error),
         variant: "destructive"
       });
     }
-  };
+  }, [toast, setWalletConnected]);
 
-  const features = [
-    {
-      icon: Sparkles,
-      title: 'AI-Powered Generation',
-      description: 'Create stunning digital assets using advanced AI models',
-    },
-    {
-      icon: Globe,
-      title: 'Cross-Chain Minting',
-      description: 'Mint your assets across multiple blockchain networks',
-    },
-    {
-      icon: Shield,
-      title: 'Secure & Decentralized',
-      description: 'Your assets are secured by blockchain technology',
-    },
-  ];
+  const handleNavigation = useCallback((path: string) => {
+    navigate(path);
+  }, [navigate]);
+
+  const handleStartCreating = useCallback(() => {
+    if (isWalletConnected) {
+      navigate('/generator');
+    } else {
+      handleConnectWallet();
+    }
+  }, [isWalletConnected, navigate, handleConnectWallet]);
 
   return (
     <div className="min-h-screen pt-20">
       {/* Hero Section */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 grid-pattern opacity-20" />
+        
         <div className="container mx-auto px-6 py-20">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Hero Content */}
             <motion.div
-              initial={{ opacity: 0, x: -50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
+              variants={fadeInLeft}
+              initial="initial"
+              animate="animate"
               className="space-y-8"
             >
               <motion.h1 
                 className="text-5xl lg:text-7xl font-bold leading-tight"
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.2 }}
+                variants={fadeInUp}
               >
                 <span className="bg-gradient-primary bg-clip-text text-transparent">
                   Zeta-Gen:
@@ -110,82 +150,63 @@ const Landing = () => {
 
               <motion.p 
                 className="text-xl text-muted-foreground max-w-lg leading-relaxed"
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.4 }}
+                variants={fadeInUp}
               >
                 Create AI-generated digital assets and mint them cross-chain. 
                 The future of decentralized content creation is here.
               </motion.p>
 
-              {/* Wallet Status */}
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.5 }}
-              >
-                <WalletStatus isConnected={isWalletConnected} walletAddress={walletAddress} />
+              <motion.div variants={fadeInUp}>
+                <WalletStatus 
+                  isConnected={isWalletConnected} 
+                  walletAddress={walletAddress} 
+                />
               </motion.div>
 
+              {/* Action Buttons */}
               <motion.div 
                 className="flex flex-col sm:flex-row gap-4"
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.6 }}
+                variants={fadeInUp}
               >
-                {isWalletConnected ? (
-                  <Button 
-                    asChild 
-                    size="lg" 
-                    className="bg-gradient-primary hover:shadow-glow-primary transition-all duration-300 group"
-                  >
-                    <Link to="/generator">
-                      Start Creating
-                      <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                    </Link>
-                  </Button>
-                ) : (
-                  <Button 
-                    onClick={handleConnectWallet}
-                    size="lg" 
-                    className="bg-gradient-primary hover:shadow-glow-primary transition-all duration-300"
-                  >
-                    Connect Wallet to Start
-                  </Button>
-                )}
+                <Button 
+                  onClick={handleStartCreating}
+                  size="lg" 
+                  className="bg-gradient-primary hover:shadow-glow-primary transition-all duration-300 group"
+                >
+                  {isWalletConnected ? 'Start Creating' : 'Connect Wallet to Start'}
+                  <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                </Button>
                 
                 <Button 
+                  onClick={() => handleNavigation('/gallery')}
                   variant="outline" 
                   size="lg" 
-                  asChild
                   className="border-primary/30 hover:bg-primary/10 hover:border-primary/50 transition-colors"
                 >
-                  <Link to="/gallery">
-                    Explore Gallery
-                  </Link>
+                  Explore Gallery
                 </Button>
               </motion.div>
             </motion.div>
 
             {/* Hero Image */}
             <motion.div
-              initial={{ opacity: 0, x: 50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8, delay: 0.3 }}
+              variants={fadeInRight}
+              initial="initial"
+              animate="animate"
               className="relative"
             >
               <div className="relative glass-card p-4 rounded-2xl">
                 <motion.img
                   src={heroImage}
-                  alt="AI Asset Generation"
+                  alt="AI Asset Generation Preview"
                   className="w-full h-auto rounded-xl"
                   whileHover={{ scale: 1.02 }}
                   transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  loading="eager"
                 />
                 <div className="absolute inset-0 bg-gradient-primary opacity-10 rounded-xl" />
               </div>
               
-              {/* Floating elements */}
               <motion.div
                 className="absolute -top-4 -right-4 glass-card p-3 rounded-lg"
                 animate={{ y: [-5, 5, -5] }}
@@ -199,31 +220,37 @@ const Landing = () => {
       </section>
 
       {/* Features Section */}
-      <section className="py-20">
+      <section className="py-20 bg-background/50">
         <div className="container mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 50 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
+            viewport={{ once: true, margin: "-100px" }}
             className="text-center mb-16"
           >
             <h2 className="text-4xl font-bold mb-4">
-              Powered by <span className="bg-gradient-secondary bg-clip-text text-transparent">Advanced Technology</span>
+              Powered by{' '}
+              <span className="bg-gradient-secondary bg-clip-text text-transparent">
+                Advanced Technology
+              </span>
             </h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               Experience the next generation of digital asset creation with our cutting-edge platform
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            {features.map((feature, index) => (
+          <motion.div 
+            className="grid md:grid-cols-3 gap-8"
+            variants={staggerContainer}
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true, margin: "-50px" }}
+          >
+            {features.map((feature) => (
               <motion.div
                 key={feature.title}
-                initial={{ opacity: 0, y: 50 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: index * 0.2 }}
-                viewport={{ once: true }}
+                variants={fadeInUp}
                 whileHover={{ y: -5 }}
                 className="group"
               >
@@ -234,11 +261,13 @@ const Landing = () => {
                     </div>
                   </div>
                   <h3 className="text-xl font-semibold mb-3">{feature.title}</h3>
-                  <p className="text-muted-foreground leading-relaxed">{feature.description}</p>
+                  <p className="text-muted-foreground leading-relaxed">
+                    {feature.description}
+                  </p>
                 </Card>
               </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -249,11 +278,14 @@ const Landing = () => {
             initial={{ opacity: 0, y: 50 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
+            viewport={{ once: true, margin: "-100px" }}
             className="text-center mb-16"
           >
             <h2 className="text-4xl font-bold mb-4">
-              Having <span className="bg-gradient-secondary bg-clip-text text-transparent">Connection Issues</span>?
+              Having{' '}
+              <span className="bg-gradient-secondary bg-clip-text text-transparent">
+                Connection Issues
+              </span>?
             </h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               Use our diagnostic tool to troubleshoot wallet connection problems
@@ -266,43 +298,36 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* Call to Action Section */}
       <section className="py-20">
         <div className="container mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             whileInView={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
+            viewport={{ once: true, margin: "-100px" }}
             className="glass-card p-12 rounded-2xl text-center relative overflow-hidden"
           >
             <div className="absolute inset-0 bg-gradient-primary opacity-5" />
+            
             <div className="relative z-10">
               <h2 className="text-4xl font-bold mb-6">
-                Ready to Create the <span className="bg-gradient-primary bg-clip-text text-transparent">Future</span>?
+                Ready to Create the{' '}
+                <span className="bg-gradient-primary bg-clip-text text-transparent">
+                  Future
+                </span>?
               </h2>
               <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
                 Join thousands of creators already using Zeta-Gen to build the next generation of digital assets
               </p>
-              {!isWalletConnected ? (
-                <Button 
-                  onClick={handleConnectWallet}
-                  size="lg" 
-                  className="bg-gradient-primary hover:shadow-glow-primary transition-all duration-300 animate-glow-pulse"
-                >
-                  Get Started Now
-                </Button>
-              ) : (
-                <Button 
-                  asChild 
-                  size="lg" 
-                  className="bg-gradient-primary hover:shadow-glow-primary transition-all duration-300 animate-glow-pulse"
-                >
-                  <Link to="/generator">
-                    Start Creating Assets
-                  </Link>
-                </Button>
-              )}
+              
+              <Button 
+                onClick={handleStartCreating}
+                size="lg" 
+                className="bg-gradient-primary hover:shadow-glow-primary transition-all duration-300 animate-glow-pulse"
+              >
+                {isWalletConnected ? 'Start Creating Assets' : 'Get Started Now'}
+              </Button>
             </div>
           </motion.div>
         </div>

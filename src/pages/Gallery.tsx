@@ -1,21 +1,23 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useStore, type Asset } from '@/store/useStore';
-import { Search, Filter, ExternalLink, Copy, CheckCircle } from 'lucide-react';
+import { Search, Filter, ExternalLink, Copy, CheckCircle, ArrowLeft, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSEO, seoConfigs } from '@/hooks/useSEO';
 
-const Gallery = () => {
-  // SEO optimization
-  useSEO(seoConfigs.gallery);
-  
+const Gallery: React.FC = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { assets, galleryFilter, setGalleryFilter, walletAddress, fetchAssets } = useStore();
   const { toast } = useToast();
+
+  useSEO(seoConfigs.gallery);
 
   // Fetch assets when component mounts
   useEffect(() => {
@@ -25,14 +27,12 @@ const Gallery = () => {
   const filteredAssets = useMemo(() => {
     let filtered = assets;
 
-    // Filter by ownership
     if (galleryFilter === 'my-assets') {
       filtered = filtered.filter(asset => asset.owner === walletAddress);
     } else if (galleryFilter === 'trending') {
       filtered = filtered.filter(asset => asset.isMinted);
     }
 
-    // Filter by search query
     if (searchQuery) {
       filtered = filtered.filter(asset => 
         asset.prompt.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -43,19 +43,46 @@ const Gallery = () => {
     return filtered;
   }, [assets, galleryFilter, searchQuery, walletAddress]);
 
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    toast({
-      title: "Copied!",
-      description: `${label} copied to clipboard`,
-    });
-  };
+  const copyToClipboard = useCallback(async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: "Copied!",
+        description: `${label} copied to clipboard`,
+      });
+    } catch (error) {
+      toast({
+        title: "Copy Failed",
+        description: "Failed to copy to clipboard",
+        variant: "destructive"
+      });
+    }
+  }, [toast]);
 
-  const filterButtons = [
-    { key: 'all', label: 'All Assets', count: assets.length },
-    { key: 'my-assets', label: 'My Assets', count: assets.filter(a => a.owner === walletAddress).length },
-    { key: 'trending', label: 'Trending', count: assets.filter(a => a.isMinted).length },
-  ] as const;
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchAssets();
+      toast({
+        title: "Gallery Refreshed",
+        description: "Asset gallery has been updated",
+      });
+    } catch (error) {
+      toast({
+        title: "Refresh Failed", 
+        description: "Failed to refresh gallery",
+        variant: "destructive"
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [fetchAssets, toast]);
+
+  const filterButtons = useMemo(() => [
+    { key: 'all' as const, label: 'All Assets', count: assets.length },
+    { key: 'my-assets' as const, label: 'My Assets', count: assets.filter(a => a.owner === walletAddress).length },
+    { key: 'trending' as const, label: 'Trending', count: assets.filter(a => a.isMinted).length },
+  ], [assets, walletAddress]);
 
   return (
     <div className="min-h-screen pt-20">
@@ -65,16 +92,39 @@ const Gallery = () => {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-12"
+          className="mb-12"
         >
-          <h1 className="text-4xl lg:text-5xl font-bold mb-4">
-            <span className="bg-gradient-primary bg-clip-text text-transparent">
-              Asset Gallery
-            </span>
-          </h1>
-          <p className="text-xl text-muted-foreground">
-            Discover and explore AI-generated digital assets from the community
-          </p>
+          <div className="flex items-center justify-between mb-6">
+            <Button 
+              onClick={() => navigate('/')}
+              variant="ghost" 
+              className="mb-4"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Home
+            </Button>
+            
+            <Button 
+              onClick={handleRefresh}
+              variant="outline"
+              disabled={isRefreshing}
+              className="mb-4"
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Refreshing...' : 'Refresh'}
+            </Button>
+          </div>
+
+          <div className="text-center">
+            <h1 className="text-4xl lg:text-5xl font-bold mb-4">
+              <span className="bg-gradient-primary bg-clip-text text-transparent">
+                Asset Gallery
+              </span>
+            </h1>
+            <p className="text-xl text-muted-foreground">
+              Discover and explore AI-generated digital assets from the community
+            </p>
+          </div>
         </motion.div>
 
         {/* Filters and Search */}
@@ -85,14 +135,14 @@ const Gallery = () => {
           className="mb-8"
         >
           <Card className="glass-card p-6">
-            <div className="flex flex-col lg:flex-row gap-4">
+            <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center">
               {/* Filter Buttons */}
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {filterButtons.map((filter) => (
                   <Button
                     key={filter.key}
                     variant={galleryFilter === filter.key ? "default" : "outline"}
-                    onClick={() => setGalleryFilter(filter.key as any)}
+                    onClick={() => setGalleryFilter(filter.key)}
                     className={
                       galleryFilter === filter.key
                         ? "bg-gradient-primary hover:shadow-glow-primary"
@@ -138,7 +188,7 @@ const Gallery = () => {
                   exit={{ opacity: 0, scale: 0.8 }}
                   transition={{ 
                     duration: 0.4, 
-                    delay: index * 0.1,
+                    delay: Math.min(index * 0.05, 0.5),
                     type: "spring",
                     stiffness: 100
                   }}
@@ -152,12 +202,12 @@ const Gallery = () => {
                         src={asset.imageUrl}
                         alt={asset.metadata.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
                       />
                       <div className="absolute inset-0 bg-gradient-primary opacity-0 group-hover:opacity-10 transition-opacity" />
                       
-                      {/* Minted Badge */}
                       {asset.isMinted && (
-                        <Badge className="absolute top-3 right-3 bg-success hover:bg-success">
+                        <Badge className="absolute top-3 right-3 bg-green-500 hover:bg-green-500">
                           <CheckCircle className="mr-1 h-3 w-3" />
                           Minted
                         </Badge>
@@ -220,11 +270,17 @@ const Gallery = () => {
                   <Search className="h-8 w-8 text-muted-foreground" />
                 </div>
                 <h3 className="text-xl font-semibold mb-2">No assets found</h3>
-                <p className="text-muted-foreground">
+                <p className="text-muted-foreground mb-4">
                   {searchQuery 
                     ? "Try adjusting your search terms or filters" 
                     : "No assets match the current filter"}
                 </p>
+                <Button 
+                  onClick={() => navigate('/generator')}
+                  className="bg-gradient-primary hover:shadow-glow-primary"
+                >
+                  Create Your First Asset
+                </Button>
               </div>
             </motion.div>
           )}
