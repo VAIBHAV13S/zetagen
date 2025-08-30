@@ -84,8 +84,11 @@ router.post('/mint', asyncHandler(async (req, res) => {
 
   console.log(`🪙 Initiating enhanced Universal cross-chain mint for asset ${assetId}`);
   
-  // Create enhanced metadata URI
-  const metadataURI = `https://api.zeta-gen.com/metadata/${assetId}`;
+  // Create enhanced metadata URI using our backend
+  const baseURL = process.env.NODE_ENV === 'production' 
+    ? 'https://zetaforge-backend.onrender.com' 
+    : 'http://localhost:5000';
+  const metadataURI = `${baseURL}/api/metadata/${assetId}`;
   
   // Prepare enhanced traits from metadata
   const traits = asset.metadata.traits ? JSON.stringify([
@@ -251,7 +254,10 @@ router.post('/mint/batch', asyncHandler(async (req, res) => {
       }
 
       // Prepare enhanced metadata
-      const metadataURI = `https://api.zeta-gen.com/metadata/${assetId}`;
+      const baseURL = process.env.NODE_ENV === 'production' 
+        ? 'https://zetaforge-backend.onrender.com' 
+        : 'http://localhost:5000';
+      const metadataURI = `${baseURL}/api/metadata/${assetId}`;
       const traits = JSON.stringify([
         ...(asset.metadata.traits || []),
         { type: 'Batch Minted', value: 'true' },
