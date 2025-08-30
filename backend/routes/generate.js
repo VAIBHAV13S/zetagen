@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { ethers } from 'ethers';
 import Asset from '../models/Asset.js';
 import { generateImage, generateMetadata } from '../services/geminiService.js';
+import imageStorageService from '../services/imageStorageService.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 
 const router = express.Router();
@@ -79,9 +80,66 @@ router.post('/generate-asset', asyncHandler(async (req, res) => {
       generateMetadata(prompt, assetType)
     ]);
     console.log('✅ AI generation completed successfully');
+    console.log('🔍 Image generation result:', {
+      type: typeof imageResult,
+      generator: imageResult.generator,
+      format: imageResult.format,
+      hasImageURL: !!imageResult.imageURL
+    });
 
-    // Extract the image URL from the result object
-    const imageURL = typeof imageResult === 'string' ? imageResult : imageResult.imageURL;
+    // Handle different image formats from different generators
+    let finalImageURL;
+    let imageData = null;
+    
+    if (typeof imageResult === 'string') {
+      finalImageURL = imageResult;
+      imageData = { format: 'url', generator: 'Legacy' };
+    } else if (imageResult && imageResult.imageURL) {
+      // If it's a base64 image from Gemini native generation
+      if (imageResult.format === 'base64' && imageResult.imageURL.startsWith('data:')) {
+        console.log('📸 Processing Gemini native base64 image...');
+        
+        try {
+          // Save base64 image as file and get URL
+          const fileURL = await imageStorageService.saveBase64Image(imageResult.imageURL, assetId);
+          finalImageURL = `${process.env.BASE_URL || 'http://localhost:5000'}${fileURL}`;
+          
+          imageData = {
+            format: 'file',
+            originalFormat: 'base64',
+            mimeType: imageResult.imageURL.split(';')[0].split(':')[1],
+            generator: 'Gemini Native',
+            stored: true
+          };
+          
+          console.log('✅ Base64 image saved as file:', finalImageURL);
+        } catch (saveError) {
+          console.error('❌ Failed to save base64 image, using original:', saveError);
+          finalImageURL = imageResult.imageURL;
+          imageData = {
+            format: 'base64',
+            generator: 'Gemini Native',
+            stored: false,
+            error: saveError.message
+          };
+        }
+      } else {
+        console.log('🔗 Using external service URL');
+        finalImageURL = imageResult.imageURL;
+        imageData = {
+          format: 'url',
+          generator: imageResult.generator || 'External Service',
+          stored: false
+        };
+      }
+    } else {
+      throw new Error('Invalid image generation result format');
+    }
+
+    console.log('🖼️ Final image processing result:', {
+      url: finalImageURL?.substring(0, 100) + '...',
+      ...imageData
+    });
 
     const generationTime = Date.now() - startTime;
 
@@ -98,7 +156,8 @@ router.post('/generate-asset', asyncHandler(async (req, res) => {
     aiGenerated: true,
     generationModel: 'gemini-2.0-flash-exp',
     promptHash: ethers.keccak256(ethers.toUtf8Bytes(prompt)),
-    rarity: aiMetadata.rarity || 'common'
+    rarity: aiMetadata.rarity || 'common',
+    imageGenerator: imageData?.generator || 'Unknown'
   };
 
   // Enhanced generation parameters
@@ -108,9 +167,11 @@ router.post('/generate-asset', asyncHandler(async (req, res) => {
     assetType,
     size: '1024x1024',
     model: 'gemini-2.0-flash-exp',
+    imageGenerator: imageData?.generator || 'Unknown',
+    imageFormat: imageData?.format || 'url',
     generationTime: `${generationTime}ms`,
     promptTokens: prompt.split(' ').length,
-    enhancedFeatures: ['ai-metadata', 'trait-generation', 'smart-caching']
+    enhancedFeatures: ['ai-metadata', 'trait-generation', 'smart-caching', 'multi-generator-support']
   };
 
   // Create new asset
@@ -118,7 +179,7 @@ router.post('/generate-asset', asyncHandler(async (req, res) => {
     assetId,
     prompt,
     metadata,
-    imageURL,
+    imageURL: finalImageURL,
     ownerAddress: walletAddress.toLowerCase(),
     mintTxHash: null,
     isMinted: false,

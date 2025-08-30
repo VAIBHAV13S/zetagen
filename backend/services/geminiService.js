@@ -51,9 +51,9 @@ class EnhancedGeminiService {
     ];
   }
 
-  // Enhanced image generation with better prompt engineering
+  // Native Gemini image generation (preferred) with Pollinations.ai fallback
   async generateImage(prompt, style = 'digital-art', quality = 'ultra-high') {
-    console.log(`🎨 Generating enhanced AI image for: "${prompt}"`);
+    console.log(`🎨 Generating AI image for: "${prompt}"`);
 
     try {
       const cacheKey = `image_${prompt}_${style}_${quality}`;
@@ -79,34 +79,71 @@ class EnhancedGeminiService {
         'medium': 'good quality, clear details, well-balanced'
       };
 
-      const enhancedPromptTemplate = `
-        Create a clean, single-line image generation prompt for this concept: "${prompt}"
-
-        Apply these specifications:
-        - Style: ${styleTemplates[style] || styleTemplates['digital-art']}
-        - Quality: ${qualityModifiers[quality] || qualityModifiers['high']}
-        - Technical details: Perfect composition, optimal lighting, rich details
-        - Artistic elements: Creative perspective, emotional depth, visual impact
-
-        IMPORTANT: Return ONLY the enhanced prompt text, no markdown, no explanations, no code blocks, no extra formatting.
-        The output should be a single descriptive sentence suitable for AI image generation.
-      `;
+      // Create enhanced prompt
+      const enhancedPrompt = `${prompt}, ${styleTemplates[style] || styleTemplates['digital-art']}, ${qualityModifiers[quality] || qualityModifiers['high']}, perfect composition, optimal lighting, rich details, creative perspective, emotional depth, visual impact.`;
       
-      const result = await this.textModel.generateContent(enhancedPromptTemplate);
-      let enhancedPrompt = result.response.text().trim();
-      
-      // Clean up the enhanced prompt - remove markdown formatting and unwanted characters
-      enhancedPrompt = enhancedPrompt
-        .replace(/```/g, '') // Remove markdown code blocks
-        .replace(/^\s*[\w\s]*:\s*/gm, '') // Remove labels like "Enhanced prompt:"
-        .replace(/\n\s*\n/g, ' ') // Replace multiple newlines with space
-        .replace(/\s+/g, ' ') // Replace multiple spaces with single space
-        .trim();
-      
-      console.log('🎯 Enhanced prompt created and cleaned by Gemini 2.0 Flash');
-      console.log('📝 Cleaned prompt preview:', enhancedPrompt.substring(0, 100) + '...');
+      console.log('🎯 Enhanced prompt created');
+      console.log('📝 Prompt preview:', enhancedPrompt.substring(0, 100) + '...');
 
-      // Generate with multiple fallbacks for reliability
+      // Try Gemini native image generation first
+      try {
+        console.log('🔮 Attempting Gemini native image generation...');
+        const imageModel = this.genAI.getGenerativeModel({ 
+          model: 'gemini-2.0-flash-exp',
+          generationConfig: {
+            temperature: 0.8,
+            topK: 40,
+            topP: 0.95,
+          }
+        });
+
+        // Try to generate image directly with Gemini
+        const imageResult = await imageModel.generateContent([
+          {
+            text: `Generate a high-quality image: ${enhancedPrompt}`
+          }
+        ]);
+
+        // Check if Gemini returned an image
+        const response = imageResult.response;
+        if (response && response.candidates && response.candidates[0]) {
+          const candidate = response.candidates[0];
+          
+          // Look for image data in the response
+          if (candidate.content && candidate.content.parts) {
+            for (const part of candidate.content.parts) {
+              if (part.inlineData && part.inlineData.data) {
+                // Convert base64 image to data URL
+                const mimeType = part.inlineData.mimeType || 'image/png';
+                const imageDataUrl = `data:${mimeType};base64,${part.inlineData.data}`;
+                
+                console.log('✅ Gemini native image generation successful!');
+                
+                const result_data = {
+                  imageURL: imageDataUrl,
+                  enhancedPrompt,
+                  originalPrompt: prompt,
+                  style,
+                  quality,
+                  generator: 'Gemini Native',
+                  format: 'base64'
+                };
+
+                this.setCache(cacheKey, result_data);
+                return result_data;
+              }
+            }
+          }
+        }
+        
+        console.log('⚠️ Gemini native generation not available, falling back to external service...');
+        
+      } catch (geminiError) {
+        console.log('⚠️ Gemini native generation failed:', geminiError.message);
+        console.log('� Falling back to external image generation service...');
+      }
+
+      // Fallback to external image generation services
       const imageGenerators = [
         {
           name: 'Pollinations.ai (Enhanced)',
@@ -117,19 +154,21 @@ class EnhancedGeminiService {
           url: `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&seed=${Math.floor(Math.random() * 1000000)}&model=flux&enhance=true`
         },
         {
-          name: 'Stable Diffusion Turbo',
-          url: `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&seed=${Math.floor(Math.random() * 1000000)}&model=turbo`
+          name: 'Pollinations.ai (Turbo)',
+          url: `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=1024&height=1024&seed=${Math.floor(Math.random() * 1000000)}&model=turbo&enhance=false`
         }
       ];
 
       let imageURL;
+      let usedGenerator;
       for (const generator of imageGenerators) {
         try {
           imageURL = generator.url;
           // Test if URL is accessible
-          const response = await fetch(imageURL, { method: 'HEAD' });
+          const response = await fetch(imageURL, { method: 'HEAD', timeout: 10000 });
           if (response.ok) {
             console.log(`✅ Image generated successfully using ${generator.name}`);
+            usedGenerator = generator.name;
             break;
           }
         } catch (error) {
@@ -148,14 +187,15 @@ class EnhancedGeminiService {
         originalPrompt: prompt,
         style,
         quality,
-        generator: 'Enhanced Gemini + Multi-Provider'
+        generator: usedGenerator || 'External Service',
+        format: 'url'
       };
 
       this.setCache(cacheKey, result_data);
       return result_data;
 
     } catch (error) {
-      console.error('❌ Error during enhanced AI image generation:', error);
+      console.error('❌ Error during AI image generation:', error);
       throw new Error(`Failed to generate AI image: ${error.message}`);
     }
   }

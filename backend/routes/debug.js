@@ -1,36 +1,58 @@
 import express from 'express';
 import { generateImage } from '../services/geminiService.js';
+import imageStorageService from '../services/imageStorageService.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 
 const router = express.Router();
 
-// Test endpoint to verify prompt cleaning is working
+// Test endpoint to verify new image generation system
 router.post('/test-generation', asyncHandler(async (req, res) => {
   const { prompt = "a beautiful butterfly in space" } = req.body;
   
   try {
-    console.log('🧪 Testing prompt generation...');
+    console.log('🧪 Testing new image generation system...');
     console.log('📝 Input prompt:', prompt);
     
-    const imageURL = await generateImage(prompt, 'digital-art', 'high');
-    console.log('🖼️ Generated image URL:', imageURL);
+    const imageResult = await generateImage(prompt, 'digital-art', 'high');
+    console.log('🖼️ Generated image result:', {
+      type: typeof imageResult,
+      hasImageURL: !!imageResult.imageURL,
+      generator: imageResult.generator,
+      format: imageResult.format
+    });
     
-    // Check if URL contains problematic encoding
-    const hasBackticks = imageURL.includes('%60%60%60');
-    const hasNewlines = imageURL.includes('%0A');
-    
-    res.json({
+    let processedResult = {
       success: true,
-      test: {
-        inputPrompt: prompt,
-        generatedURL: imageURL,
-        urlLength: imageURL.length,
-        hasProblematicEncoding: hasBackticks,
-        hasNewlines: hasNewlines,
-        status: hasBackticks ? '❌ Still has backticks' : '✅ Clean URL generated',
+      inputPrompt: prompt,
+      generationResult: imageResult,
+      analysis: {
+        isString: typeof imageResult === 'string',
+        hasImageURL: !!imageResult.imageURL,
+        generator: imageResult.generator || 'Unknown',
+        format: imageResult.format || 'url',
         timestamp: new Date().toISOString()
       }
-    });
+    };
+
+    // If it's a base64 image, try to save it
+    if (imageResult.format === 'base64' && imageResult.imageURL.startsWith('data:')) {
+      try {
+        const testAssetId = 'test-' + Date.now();
+        const fileURL = await imageStorageService.saveBase64Image(imageResult.imageURL, testAssetId);
+        processedResult.fileStorage = {
+          success: true,
+          fileURL: fileURL,
+          fullURL: `${process.env.BASE_URL || 'http://localhost:5000'}${fileURL}`
+        };
+      } catch (storageError) {
+        processedResult.fileStorage = {
+          success: false,
+          error: storageError.message
+        };
+      }
+    }
+
+    res.json(processedResult);
     
   } catch (error) {
     console.error('❌ Test generation failed:', error);
