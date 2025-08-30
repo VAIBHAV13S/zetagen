@@ -143,32 +143,45 @@ class EnhancedGeminiService {
         console.log('� Falling back to external image generation service...');
       }
 
-      // Fallback to external image generation services
+      // Fallback to multiple external image generation services
       const imageGenerators = [
         {
-          name: 'Pollinations.ai (Enhanced)',
-          url: `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=1024&height=1024&seed=${Math.floor(Math.random() * 1000000)}&model=flux&enhance=true`
+          name: 'Pollinations.ai (Simple)',
+          url: `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&model=flux&nologo=true`
         },
         {
-          name: 'Pollinations.ai (Original)',
-          url: `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&seed=${Math.floor(Math.random() * 1000000)}&model=flux&enhance=true`
+          name: 'Pollinations.ai (Enhanced)',
+          url: `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=1024&height=1024&model=flux&nologo=true`
+        },
+        {
+          name: 'Alternative Image Service',
+          url: `https://api.limewire.com/api/image/generation?prompt=${encodeURIComponent(prompt)}&aspect_ratio=1:1&quality=HIGH&style=PHOTOREALISTIC`
         },
         {
           name: 'Pollinations.ai (Turbo)',
-          url: `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=1024&height=1024&seed=${Math.floor(Math.random() * 1000000)}&model=turbo&enhance=false`
+          url: `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&model=turbo&nologo=true`
         }
       ];
 
       let imageURL;
       let usedGenerator;
-      for (const generator of imageGenerators) {
+      let fallbackURL;
+      
+      for (let i = 0; i < imageGenerators.length; i++) {
+        const generator = imageGenerators[i];
         try {
-          imageURL = generator.url;
+          const testURL = generator.url;
           // Test if URL is accessible
-          const response = await fetch(imageURL, { method: 'HEAD', timeout: 10000 });
+          const response = await fetch(testURL, { method: 'HEAD', timeout: 10000 });
           if (response.ok) {
             console.log(`✅ Image generated successfully using ${generator.name}`);
+            imageURL = testURL;
             usedGenerator = generator.name;
+            
+            // Set fallback to next working service
+            if (i + 1 < imageGenerators.length) {
+              fallbackURL = imageGenerators[i + 1].url;
+            }
             break;
           }
         } catch (error) {
@@ -181,14 +194,27 @@ class EnhancedGeminiService {
         throw new Error('All image generation services failed');
       }
 
+      // Create proxy URL to serve through our backend (avoids CORS issues)
+      const baseURL = process.env.BASE_URL || 'http://localhost:5000';
+      let proxyURL = `${baseURL}/api/image/proxy-image?url=${encodeURIComponent(imageURL)}`;
+      
+      // Add fallback if available
+      if (fallbackURL) {
+        proxyURL += `&fallback=${encodeURIComponent(fallbackURL)}`;
+      }
+
+      console.log('🔗 Created proxy URL for reliable image serving');
+
       const result_data = {
-        imageURL,
+        imageURL: proxyURL, // Use proxy URL instead of direct URL
+        originalURL: imageURL, // Keep original for reference
+        fallbackURL: fallbackURL,
         enhancedPrompt,
         originalPrompt: prompt,
         style,
         quality,
         generator: usedGenerator || 'External Service',
-        format: 'url'
+        format: 'proxy'
       };
 
       this.setCache(cacheKey, result_data);
