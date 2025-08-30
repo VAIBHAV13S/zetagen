@@ -230,7 +230,7 @@ class EnhancedZetaForgeUniversalService {
     /**
      * Enhanced cross-chain mint with retry mechanism and gas optimization
      */
-    async crossChainMintAsset(walletAddress, assetId, prompt, metadataURI, traits, sourceChain = 7001) {
+    async crossChainMintAsset(walletAddress, sourceChain, assetId, prompt, metadataURI, traits) {
         const startTime = Date.now();
         let attempt = 0;
 
@@ -284,6 +284,7 @@ class EnhancedZetaForgeUniversalService {
 
                 return {
                     success: true,
+                    hash: receipt.transactionHash,
                     transactionHash: receipt.transactionHash,
                     blockNumber: receipt.blockNumber,
                     tokenId: tokenId.toString(),
@@ -294,7 +295,9 @@ class EnhancedZetaForgeUniversalService {
                     gasPrice: ethers.formatUnits(receipt.gasPrice || gasPrice, 'gwei'),
                     transactionTime: Date.now() - startTime,
                     contract: 'universal',
-                    attempt: attempt
+                    attempt: attempt,
+                    mintFee: ethers.formatEther(fee),
+                    retryAttempts: attempt - 1
                 };
 
             } catch (error) {
@@ -595,6 +598,15 @@ class EnhancedZetaForgeUniversalService {
 
     // Helper methods
     async validateMintParameters(walletAddress, assetId, prompt, metadataURI, sourceChain) {
+        console.log(`🔍 Validating mint parameters:`, {
+            walletAddress,
+            assetId: assetId?.substring(0, 20) + '...',
+            promptLength: prompt?.length,
+            metadataURI,
+            sourceChain,
+            metadataURIStartsWithHttp: metadataURI?.startsWith('http')
+        });
+        
         if (!ethers.isAddress(walletAddress)) {
             throw new Error('Invalid wallet address');
         }
@@ -610,6 +622,8 @@ class EnhancedZetaForgeUniversalService {
         if (![1, 56, 137, 43114, 7001].includes(sourceChain)) {
             throw new Error('Unsupported source chain');
         }
+        
+        console.log(`✅ All mint parameters validated successfully`);
     }
 
     async validateMigrationParameters(legacyTokenId, walletAddress) {

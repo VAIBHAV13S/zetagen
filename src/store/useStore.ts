@@ -31,7 +31,7 @@ interface AppState {
   // Actions
   setCurrentAsset: (asset: Asset | null) => void;
   addAsset: (asset: Asset) => void;
-  generateAsset: (prompt: string) => Promise<void>;
+  generateAsset: (prompt: string) => Promise<{ success: boolean; asset: Asset }>;
   mintAsset: (assetId: string) => Promise<void>;
   fetchAssets: (owner?: string) => Promise<void>;
   
@@ -72,29 +72,48 @@ export const useStore = create<AppState>((set, get) => ({
         throw new Error('Wallet not connected');
       }
 
+      console.log('🚀 Starting asset generation with prompt:', prompt.substring(0, 50) + '...');
+      console.log('👛 Using wallet address:', walletAddress);
+
       const response = await callEdgeFunction(API_ENDPOINTS.generateAsset, {
         prompt,
-        walletAddress
+        walletAddress,
+        style: 'digital-art',
+        quality: 'high',
+        assetType: 'artwork'
       });
 
-      if (response.success) {
-        const newAsset: Asset = {
-          id: response.asset.assetId,
-          prompt: response.asset.prompt,
-          imageUrl: response.asset.imageUrl || response.asset.imageURL, // Handle both property names
-          owner: response.asset.owner,
-          metadata: response.asset.metadata,
-          isMinted: response.asset.isMinted,
-        };
+      console.log('� API Response:', response);
 
-        set({ 
-          isGenerating: false, 
-          currentAsset: newAsset 
-        });
-        
-        get().addAsset(newAsset);
-      } else {
+      if (!response.success) {
+        console.error('❌ API Error Response:', response);
         throw new Error(response.error || 'Failed to generate asset');
+      }
+
+      console.log('✅ Asset generation successful');
+      console.log('🔍 Asset data received:', response.asset);
+      console.log('🖼️ Image URL (imageUrl):', response.asset.imageUrl);
+      console.log('🖼️ Image URL (imageURL):', response.asset.imageURL);
+      
+      // Use imageUrl from response, fallback to imageURL if needed
+      const finalAsset = {
+        ...response.asset,
+        id: response.asset.assetId || response.asset.id, // Map assetId to id
+        imageUrl: response.asset.imageUrl || response.asset.imageURL
+      };
+      console.log('🎯 Final asset object:', finalAsset);
+
+      if (response.success && finalAsset) {
+        set((state) => ({
+          assets: [finalAsset, ...state.assets],
+          currentAsset: finalAsset,
+          isGenerating: false,
+        }));
+        
+        console.log('💾 Asset saved to store successfully');
+        return { success: true, asset: finalAsset };
+      } else {
+        throw new Error('Invalid response format');
       }
     } catch (error) {
       console.error('Generation failed:', error);

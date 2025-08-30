@@ -135,6 +135,15 @@ router.post('/mint', asyncHandler(async (req, res) => {
   });
   
   // Execute enhanced cross-chain mint with retry mechanism
+  console.log(`🔧 Debug - About to call crossChainMintAsset with parameters:`, {
+    walletAddress,
+    sourceChain,
+    assetId,
+    prompt: asset.prompt.substring(0, 50) + '...',
+    metadataURI,
+    traitsLength: traits ? traits.length : 0
+  });
+  
   const mintResult = await crossChainMintAsset(
     walletAddress,
     sourceChain,

@@ -136,31 +136,97 @@ const Generator = () => {
   };
 
   const handleDownload = async () => {
-    if (!currentAsset?.imageUrl) return;
+    if (!currentAsset?.imageUrl) {
+      toast({
+        title: "Download Failed",
+        description: "No image available to download",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
-      const response = await fetch(currentAsset.imageUrl);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      console.log('� Starting download for:', currentAsset.imageUrl);
       
+      // Try to fetch the image with CORS mode
+      const response = await fetch(currentAsset.imageUrl, { 
+        mode: 'cors',
+        credentials: 'omit',
+        headers: {
+          'Accept': 'image/*,*/*;q=0.8'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+      }
+
+      const blob = await response.blob();
+      console.log('� Downloaded blob:', {
+        size: blob.size,
+        type: blob.type
+      });
+
+      // Determine file extension based on content type or URL
+      let fileExtension = '.png'; // default
+      if (blob.type.includes('jpeg') || blob.type.includes('jpg')) {
+        fileExtension = '.jpg';
+      } else if (blob.type.includes('png')) {
+        fileExtension = '.png';
+      } else if (blob.type.includes('webp')) {
+        fileExtension = '.webp';
+      } else if (blob.type.includes('gif')) {
+        fileExtension = '.gif';
+      } else {
+        // Try to guess from URL
+        const urlLower = currentAsset.imageUrl.toLowerCase();
+        if (urlLower.includes('.jpg') || urlLower.includes('.jpeg')) {
+          fileExtension = '.jpg';
+        } else if (urlLower.includes('.webp')) {
+          fileExtension = '.webp';
+        } else if (urlLower.includes('.gif')) {
+          fileExtension = '.gif';
+        }
+      }
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `zetaforge-${currentAsset.metadata.name.replace(/\s+/g, '-').toLowerCase()}.jpg`;
+      link.download = `zetaforge-${currentAsset.id || 'asset'}${fileExtension}`;
+      
+      // Trigger download
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      
+      // Clean up
       window.URL.revokeObjectURL(url);
 
       toast({
-        title: "Download Started",
-        description: "Your asset is being downloaded",
+        title: "Download Complete",
+        description: `Image saved as ${link.download}`,
       });
+
+      console.log('✅ Download completed successfully');
+
     } catch (error) {
-      toast({
-        title: "Download Failed",
-        description: "Failed to download the image. Please try again.",
-        variant: "destructive"
-      });
+      console.error('❌ Download failed:', error);
+      
+      // Fallback: try opening in new tab
+      try {
+        window.open(currentAsset.imageUrl, '_blank');
+        toast({
+          title: "Download Alternative",
+          description: "Image opened in new tab. Right-click to save.",
+        });
+      } catch (fallbackError) {
+        toast({
+          title: "Download Failed",
+          description: "Unable to download image. Try right-clicking the image to save.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -333,11 +399,26 @@ const Generator = () => {
                     >
                       {/* Generated Image */}
                       <div className="relative group">
-                        <img
-                          src={currentAsset.imageUrl}
-                          alt={currentAsset.prompt}
-                          className="w-full rounded-lg shadow-glass"
-                        />
+                        {currentAsset.imageUrl ? (
+                          <img
+                            src={currentAsset.imageUrl}
+                            alt={currentAsset.prompt}
+                            className="w-full rounded-lg shadow-glass"
+                            onLoad={() => console.log('✅ Image loaded successfully:', currentAsset.imageUrl)}
+                            onError={(e) => {
+                              console.error('❌ Image failed to load:', currentAsset.imageUrl);
+                              console.error('Error details:', e);
+                              // Show a placeholder if image fails
+                              e.currentTarget.src = 'https://via.placeholder.com/400x400/f0f0f0/666?text=Image+Not+Available';
+                            }}
+                            style={{ minHeight: '200px', backgroundColor: '#f0f0f0' }}
+                          />
+                        ) : (
+                          <div className="w-full h-48 bg-gray-200 rounded-lg flex items-center justify-center">
+                            <p className="text-gray-500">No image URL available</p>
+                            <p className="text-xs text-gray-400 mt-1">Check console for debugging info</p>
+                          </div>
+                        )}
                         <div className="absolute inset-0 bg-gradient-primary opacity-0 group-hover:opacity-10 transition-opacity rounded-lg" />
                       </div>
 
