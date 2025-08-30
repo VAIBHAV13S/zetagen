@@ -42,5 +42,10 @@
   "env": {
     "NODE_ENV": "production",
     "VITE_API_BASE_URL": "https://zetaforge-backend.onrender.com/api"
+  },
+  "build": {
+    "env": {
+      "VITE_API_BASE_URL": "https://zetaforge-backend.onrender.com/api"
+    }
   }
 }
