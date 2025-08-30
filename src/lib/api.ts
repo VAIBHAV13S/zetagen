@@ -1,8 +1,6 @@
 // Backend API endpoints
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
-  (import.meta.env.MODE === 'production' 
-    ? 'https://zetaforge-backend.onrender.com/api' 
-    : 'http://localhost:5000/api');
+  'https://zetaforge-backend.onrender.com/api';
 
 // Debug environment variables
 console.log('🔧 API Configuration:', {
