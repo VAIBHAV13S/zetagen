@@ -74,18 +74,23 @@ router.post('/generate-asset', asyncHandler(async (req, res) => {
   try {
     // AI-powered generation with enhanced parameters
     console.log('🤖 Starting AI generation...');
-    const [imageURL, aiMetadata] = await Promise.all([
+    const [imageResult, aiMetadata] = await Promise.all([
       generateImage(prompt, style, quality),
       generateMetadata(prompt, assetType)
     ]);
     console.log('✅ AI generation completed successfully');
+
+    // Extract the image URL from the result object
+    const imageURL = typeof imageResult === 'string' ? imageResult : imageResult.imageURL;
 
     const generationTime = Date.now() - startTime;
 
   // Enhanced asset metadata with AI-generated traits
   const metadata = {
     name: aiMetadata.name || `AI Asset ${assetId.slice(0, 8)}`,
-    description: aiMetadata.description || prompt,
+    description: (aiMetadata.description || prompt).length > 500 
+      ? (aiMetadata.description || prompt).substring(0, 497) + '...'
+      : (aiMetadata.description || prompt),
     traits: aiMetadata.traits || [],
     createdAt: new Date(),
     transactionHash: null,

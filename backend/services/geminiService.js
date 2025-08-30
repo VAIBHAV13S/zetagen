@@ -188,7 +188,7 @@ class EnhancedGeminiService {
 
         Create a JSON object with:
         1. "name": Creative, memorable name (3-8 words max)
-        2. "description": Engaging backstory/lore (80-120 words, tell a story)
+        2. "description": Engaging backstory/lore (MAXIMUM 400 characters, be concise but compelling)
         3. "traits": Array of exactly 6 trait objects with "trait_type" and "value"
         4. "rarity_score": Number from 1-100 based on traits combination
         5. "category": Main category classification
