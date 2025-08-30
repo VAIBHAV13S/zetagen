@@ -1,96 +1,47 @@
-import { ethers } from 'ethers';
+import { ethers, Interface } from 'ethers';
 
-// Enhanced Universal App V2 ABI with additional functions
-const ENHANCED_UNIVERSAL_V2_ABI = [
-    // Enhanced view functions
-    "function totalSupply() external view returns (uint256)",
-    "function totalCombinedSupply() external view returns (uint256)",
-    "function mintPrice() external view returns (uint256)",
-    "function universalModeEnabled() external view returns (bool)",
-    "function legacyMigrationEnabled() external view returns (bool)",
-    "function getChainFee(uint256 chainId) external view returns (uint256)",
-    "function isAssetMinted(string memory assetId) external view returns (bool)",
-    "function getTokenIdByAssetId(string memory assetId) external view returns (uint256)",
-    "function getAssetMetadata(uint256 tokenId) external view returns (tuple(string assetId, string name, string description, string imageUrl, string[] traitTypes, string[] traitValues, uint256 timestamp, uint256 sourceChain, address originalMinter))",
-    "function getUserAssets(address user) external view returns (uint256[] memory tokenIds, string[] memory assetIds, string[] memory prompts, string[] memory uris, uint256[] memory timestamps, uint256[] memory sourceChains)",
-    "function ownerOf(uint256 tokenId) external view returns (address)",
-    "function tokenURI(uint256 tokenId) external view returns (string memory)",
-    "function balanceOf(address owner) external view returns (uint256)",
-    "function getApproved(uint256 tokenId) external view returns (address)",
-    "function isApprovedForAll(address owner, address operator) external view returns (bool)",
-    
-    // Enhanced mint functions
-    "function crossChainMint(address to, uint256 sourceChain, string memory assetId, string memory prompt, string memory metadataURI, string memory traits) external payable",
-    "function mintAsset(address to, string memory assetId, string memory metadataURI, tuple(string assetId, string name, string description, string imageUrl, string[] traitTypes, string[] traitValues, uint256 timestamp, uint256 sourceChain, address originalMinter) metadata) external payable",
-    "function migrateLegacyAsset(uint256 legacyTokenId) external",
-    "function batchMint(address[] memory to, uint256[] memory sourceChains, string[] memory assetIds, string[] memory prompts, string[] memory metadataURIs, string[] memory traits) external payable",
-    
-    // Admin functions
-    "function setMintPrice(uint256 newPrice) external",
-    "function setChainFee(uint256 chainId, uint256 fee) external",
-    "function setUniversalMode(bool enabled) external",
-    "function setLegacyMigration(bool enabled) external",
-    "function withdraw() external",
-    "function pause() external",
-    "function unpause() external",
-    
-    // Enhanced events
-    "event AssetMinted(uint256 indexed tokenId, address indexed minter, uint256 indexed sourceChain, string assetId, string prompt, string metadataURI)",
-    "event CrossChainMintRequested(address indexed user, uint256 indexed sourceChain, string assetId, string prompt)",
-    "event LegacyAssetMigrated(uint256 indexed legacyTokenId, uint256 indexed newTokenId, address indexed owner)",
-    "event BatchMintCompleted(uint256 indexed batchId, uint256 successCount, uint256 failureCount)",
-    "event ChainFeeUpdated(uint256 indexed chainId, uint256 newFee)"
-];
-
+/**
+ * Enhanced ZetaForge Universal Service V2
+ * Provides comprehensive NFT minting, migration, and management functionality
+ */
 class EnhancedZetaForgeUniversalService {
     constructor() {
+        console.log('🚀 Initializing Enhanced ZetaForge Universal Service V2');
+        
+        // Environment validation
+        const requiredEnvVars = [
+            'ZETACHAIN_RPC_URL',
+            'ZETACHAIN_PRIVATE_KEY',
+            'ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS',
+            'ZETAFORGE_LEGACY_CONTRACT_ADDRESS'
+        ];
+        
+        const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+        if (missingVars.length > 0) {
+            throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
+        }
+
+        // Initialize provider
         this.provider = new ethers.JsonRpcProvider(process.env.ZETACHAIN_RPC_URL);
         
-        // Check if private key is provided and valid
+        // Initialize wallet
         const privateKey = process.env.ZETACHAIN_PRIVATE_KEY;
         if (!privateKey) {
             throw new Error('ZETACHAIN_PRIVATE_KEY environment variable is required');
         }
-        
-        // Validate private key format
         if (!privateKey.startsWith('0x') || privateKey.length !== 66) {
             throw new Error('ZETACHAIN_PRIVATE_KEY must be a valid 64-character hex string starting with 0x');
         }
-        
         this.wallet = new ethers.Wallet(privateKey, this.provider);
-        
-        // Universal App V2 contract with enhanced features
-        this.universalContract = new ethers.Contract(
-            process.env.ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS,
-            ENHANCED_UNIVERSAL_V2_ABI,
-            this.wallet
-        );
-        
-        // Legacy contract with full ABI
-        this.legacyContract = new ethers.Contract(
-            process.env.ZETAFORGE_LEGACY_CONTRACT_ADDRESS,
-            [
-                "function totalSupply() external view returns (uint256)",
-                "function ownerOf(uint256 tokenId) external view returns (address)",
-                "function tokenURI(uint256 tokenId) external view returns (string memory)",
-                "function getAssetMetadata(uint256 tokenId) external view returns (tuple(string assetId, string name, string description, string imageUrl, string[] traitTypes, string[] traitValues, uint256 timestamp))",
-                "function balanceOf(address owner) external view returns (uint256)",
-                "function tokenOfOwnerByIndex(address owner, uint256 index) external view returns (uint256)"
-            ],
-            this.wallet
-        );
-        
-        this.universalModeEnabled = process.env.UNIVERSAL_MODE_ENABLED === 'true';
-        this.crossChainEnabled = process.env.CROSS_CHAIN_ENABLED === 'true';
-        
-        // Enhanced configuration
+
+        // Service configuration
         this.config = {
             maxRetries: 3,
             retryDelay: 1000,
             gasMultiplier: 1.2,
             maxGasLimit: 5000000,
             priceUpdateInterval: 300000, // 5 minutes
-            healthCheckInterval: 60000   // 1 minute
+            healthCheckInterval: 60000 // 1 minute
         };
 
         // Performance monitoring
@@ -103,8 +54,204 @@ class EnhancedZetaForgeUniversalService {
             lastHealthCheck: null
         };
 
-        // Start health monitoring
-        this.startHealthMonitoring();
+        // Contracts will be initialized in async init()
+        this.universalContract = null;
+        this.legacyContract = null;
+        this.crossChainEnabled = false;
+
+        console.log("Contract Address:", process.env.ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS);
+        console.log("Provider exists?", !!this.provider);
+        console.log("Wallet exists?", !!this.wallet);
+    }
+
+    /**
+     * Async initialization to load ABI and create contracts
+     */
+    async init() {
+        try {
+            console.log('🔧 Loading contract ABIs and initializing contracts...');
+            
+            // Load Universal Contract ABI using fs approach (most reliable)
+            let universalABI;
+            try {
+                const fs = await import('fs/promises');
+                const path = await import('path');
+                const { fileURLToPath } = await import('url');
+                
+                const __filename = fileURLToPath(import.meta.url);
+                const __dirname = path.dirname(__filename);
+                const abiPath = path.join(__dirname, '../abi/ZetaForgeUniversalV2.json');
+                
+                console.log('📁 Looking for ABI at:', abiPath);
+                
+                const abiData = await fs.readFile(abiPath, 'utf8');
+                const abiJson = JSON.parse(abiData);
+                
+                // Debug the ABI structure
+                console.log('🔍 ABI JSON structure:', {
+                    hasAbi: !!abiJson.abi,
+                    isArray: Array.isArray(abiJson),
+                    keys: Object.keys(abiJson).slice(0, 10), // Limit output
+                    type: typeof abiJson,
+                    contractName: abiJson.contractName,
+                    format: abiJson._format
+                });
+                
+                // Handle Hardhat artifact format
+                if (abiJson.abi && Array.isArray(abiJson.abi)) {
+                    universalABI = abiJson.abi;
+                    console.log('✅ Using .abi property from Hardhat artifact');
+                } else if (Array.isArray(abiJson)) {
+                    universalABI = abiJson;
+                    console.log('✅ Using direct array format');
+                } else {
+                    throw new Error('ABI not found in expected format');
+                }
+                
+                // Validate it's an array
+                if (!Array.isArray(universalABI)) {
+                    throw new Error(`ABI is not an array, got: ${typeof universalABI}`);
+                }
+                
+                console.log(`📋 Loaded ABI with ${universalABI.length} items`);
+                
+            } catch (error) {
+                console.error('❌ Failed to load Universal ABI:', error);
+                throw new Error(`Cannot load Universal contract ABI: ${error.message}`);
+            }
+            
+            // Validate ABI by creating Interface
+            let iface;
+            try {
+                iface = new Interface(universalABI);
+                console.log("✅ Universal ABI Interface created successfully");
+                
+                // Debug the interface object
+                console.log("🔍 Interface debugging:");
+                console.log("  - Interface type:", typeof iface);
+                console.log("  - Interface is null:", iface === null);
+                console.log("  - Interface is undefined:", iface === undefined);
+                
+                if (iface) {
+                    console.log("  - Interface keys:", Object.keys(iface));
+                    console.log("  - Has functions:", 'functions' in iface);
+                    console.log("  - Functions type:", typeof iface.functions);
+                    
+                    // Try different ways to access functions
+                    if (iface.functions) {
+                        console.log("  - Functions keys available");
+                    } else if (iface.fragments) {
+                        console.log("  - Using fragments instead of functions");
+                        const functionFragments = iface.fragments.filter(f => f.type === 'function');
+                        console.log(`  - Found ${functionFragments.length} function fragments`);
+                        if (functionFragments.length > 0) {
+                            console.log("📝 Available functions:", functionFragments.slice(0, 5).map(f => f.name));
+                        }
+                    }
+                }
+                
+                // Safely get function names
+                if (iface && iface.functions && typeof iface.functions === 'object') {
+                    const functionKeys = Object.keys(iface.functions);
+                    if (functionKeys.length > 0) {
+                        console.log("📝 Available functions:", functionKeys.slice(0, 5), "...");
+                    } else {
+                        console.warn("⚠️ No functions found in ABI interface");
+                    }
+                } else {
+                    console.warn("⚠️ Interface functions property not available");
+                    console.log("🔍 Interface properties:", iface ? Object.keys(iface) : 'Interface is null');
+                }
+                
+            } catch (interfaceError) {
+                console.error('❌ Failed to create Interface:', interfaceError);
+                throw new Error(`Invalid ABI format: ${interfaceError.message}`);
+            }
+            
+            // Create Universal contract instance
+            try {
+                this.universalContract = new ethers.Contract(
+                    process.env.ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS,
+                    universalABI,
+                    this.wallet
+                );
+                console.log("✅ Universal contract instance created");
+            } catch (contractError) {
+                console.error('❌ Failed to create contract instance:', contractError);
+                throw new Error(`Cannot create contract: ${contractError.message}`);
+            }
+
+            // Load Legacy Contract ABI (optional)
+            try {
+                const fs = await import('fs/promises');
+                const path = await import('path');
+                const { fileURLToPath } = await import('url');
+                
+                const __filename = fileURLToPath(import.meta.url);
+                const __dirname = path.dirname(__filename);
+                const legacyAbiPath = path.join(__dirname, '../abi/ZetaForgeLegacy.json');
+                
+                console.log('📁 Looking for Legacy ABI at:', legacyAbiPath);
+                
+                const legacyAbiData = await fs.readFile(legacyAbiPath, 'utf8');
+                const legacyAbiJson = JSON.parse(legacyAbiData);
+                
+                let legacyABI;
+                // Handle Hardhat artifact format for legacy too
+                if (legacyAbiJson.abi && Array.isArray(legacyAbiJson.abi)) {
+                    legacyABI = legacyAbiJson.abi;
+                    console.log('✅ Using .abi property from Legacy Hardhat artifact');
+                } else if (Array.isArray(legacyAbiJson)) {
+                    legacyABI = legacyAbiJson;
+                    console.log('✅ Using direct array format for Legacy');
+                } else {
+                    throw new Error('Legacy ABI not found in expected format');
+                }
+                
+                this.legacyContract = new ethers.Contract(
+                    process.env.ZETAFORGE_LEGACY_CONTRACT_ADDRESS,
+                    legacyABI,
+                    this.wallet
+                );
+                console.log("✅ Legacy contract initialized");
+            } catch (error) {
+                console.warn("⚠️ Legacy contract ABI not found, migration features will be disabled:", error.message);
+                this.legacyContract = null;
+            }
+
+            // Verify contract initialization
+            if (this.universalContract && this.universalContract.interface) {
+                try {
+                    const contractInterface = this.universalContract.interface;
+                    if (contractInterface.functions && typeof contractInterface.functions === 'object') {
+                        const availableFunctions = Object.keys(contractInterface.functions);
+                        console.log(`✅ Contract created with ${availableFunctions.length} functions available`);
+                        if (availableFunctions.length > 0) {
+                            console.log("🔧 Sample functions:", availableFunctions.slice(0, 3));
+                        }
+                    } else {
+                        console.warn("⚠️ Contract interface functions not accessible");
+                        console.log("🔍 Interface properties:", Object.keys(contractInterface));
+                    }
+                } catch (error) {
+                    console.warn("⚠️ Could not access contract interface functions:", error.message);
+                }
+            } else {
+                throw new Error('Contract interface not properly initialized');
+            }
+
+            // Enable cross-chain functionality
+            this.crossChainEnabled = true;
+            
+            // Start health monitoring
+            this.startHealthMonitoring();
+            
+            console.log("✅ Enhanced ZetaForge Universal Service V2 initialized successfully");
+            
+        } catch (err) {
+            console.error("❌ Failed to initialize service:", err);
+            throw err;
+        }
     }
 
     /**
@@ -114,6 +261,11 @@ class EnhancedZetaForgeUniversalService {
         try {
             console.log('📊 Fetching enhanced contract information...');
 
+            // Ensure contracts are initialized
+            if (!this.universalContract) {
+                throw new Error('Universal contract not initialized');
+            }
+
             // Parallel execution for better performance
             const [
                 universalSupply,
@@ -121,7 +273,6 @@ class EnhancedZetaForgeUniversalService {
                 mintPrice,
                 universalMode,
                 migrationEnabled,
-                legacySupply,
                 networkInfo,
                 gasPrice,
                 blockNumber
@@ -131,11 +282,20 @@ class EnhancedZetaForgeUniversalService {
                 this.universalContract.mintPrice(),
                 this.universalContract.universalModeEnabled(),
                 this.universalContract.legacyMigrationEnabled(),
-                this.legacyContract.totalSupply(),
                 this.provider.getNetwork(),
                 this.provider.getFeeData(),
                 this.provider.getBlockNumber()
             ]);
+
+            // Get legacy supply if legacy contract is available
+            let legacySupply = 0;
+            if (this.legacyContract) {
+                try {
+                    legacySupply = await this.legacyContract.totalSupply();
+                } catch (error) {
+                    console.warn("Could not fetch legacy supply:", error.message);
+                }
+            }
 
             // Get all chain fees in parallel
             const chainIds = [1, 56, 137, 43114, 7001];
@@ -275,7 +435,7 @@ class EnhancedZetaForgeUniversalService {
                     }
                 );
 
-                console.log(`📝 Transaction submitted: ${tx.hash}`);
+                console.log(`📄 Transaction submitted: ${tx.hash}`);
 
                 // Wait for confirmation with timeout
                 const receipt = await this.waitForTransaction(tx.hash, 60000); // 60 second timeout
@@ -394,11 +554,16 @@ class EnhancedZetaForgeUniversalService {
 
         return results;
     }
+
     /**
      * Enhanced asset migration with validation
      */
     async migrateLegacyAsset(legacyTokenId, walletAddress) {
         try {
+            if (!this.legacyContract) {
+                throw new Error('Legacy contract not available - migration disabled');
+            }
+
             console.log(`🔄 Enhanced migration for legacy token ${legacyTokenId}`);
 
             // Enhanced validation
@@ -429,14 +594,14 @@ class EnhancedZetaForgeUniversalService {
 
             // Optimized gas estimation
             const gasEstimate = await this.universalContract.estimateGas.migrateLegacyAsset(legacyTokenId);
-            const gasLimit = gasEstimate * BigInt(this.config.gasMultiplier * 100) / BigInt(100);
+            const gasLimit = gasEstimate * BigInt(Math.floor(this.config.gasMultiplier * 100)) / BigInt(100);
 
             // Execute migration
             const tx = await this.universalContract.migrateLegacyAsset(legacyTokenId, {
                 gasLimit: gasLimit
             });
 
-            console.log(`📝 Migration transaction: ${tx.hash}`);
+            console.log(`📄 Migration transaction: ${tx.hash}`);
 
             // Wait for confirmation
             const receipt = await this.waitForTransaction(tx.hash, 60000);
@@ -536,7 +701,7 @@ class EnhancedZetaForgeUniversalService {
             }
 
             // Get Legacy assets if requested
-            if (includeLegacy) {
+            if (includeLegacy && this.legacyContract) {
                 try {
                     const legacyBalance = await this.legacyContract.balanceOf(walletAddress);
                     const legacyAssets = [];
@@ -656,7 +821,7 @@ class EnhancedZetaForgeUniversalService {
         );
 
         // Apply gas multiplier but cap at max limit
-        const bufferedGas = gasEstimate * BigInt(this.config.gasMultiplier * 100) / BigInt(100);
+        const bufferedGas = gasEstimate * BigInt(Math.floor(this.config.gasMultiplier * 100)) / BigInt(100);
         const finalGasLimit = bufferedGas > BigInt(this.config.maxGasLimit) 
             ? BigInt(this.config.maxGasLimit) 
             : bufferedGas;
@@ -806,8 +971,9 @@ class EnhancedZetaForgeUniversalService {
     }
 }
 
-// Create a singleton instance
+// Create a singleton instance and initialize ABI
 const zetaForgeService = new EnhancedZetaForgeUniversalService();
+await zetaForgeService.init();
 
 // Export both the class and individual functions for backward compatibility
 export default EnhancedZetaForgeUniversalService;
