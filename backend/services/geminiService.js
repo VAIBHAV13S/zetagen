@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import dotenv from 'dotenv';
+import imageStorageService from './imageStorageService.js';
 
 dotenv.config();
 

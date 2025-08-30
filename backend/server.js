@@ -15,7 +15,6 @@ import mintRoutes from './routes/mint.js';
 import suggestRoutes from './routes/suggest.js';
 import universalRoutes from './routes/universal.js';
 import debugRoutes from './routes/debug.js';
-import imageProxyRoutes from './routes/imageProxy.js';
 
 // Load environment variables
 dotenv.config();
@@ -90,7 +89,6 @@ app.use('/api', mintLimiter, mintRoutes);
 app.use('/api', suggestLimiter, suggestRoutes);
 app.use('/api/universal', universalRoutes);
 app.use('/api/debug', debugRoutes);
-app.use('/api/image', imageProxyRoutes);
 
 // API info endpoint
 app.get('/api', (req, res) => {
