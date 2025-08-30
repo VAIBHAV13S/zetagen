@@ -80,7 +80,7 @@ class EnhancedGeminiService {
       };
 
       const enhancedPromptTemplate = `
-        Create a highly detailed, professional prompt for AI image generation based on this concept: "${prompt}"
+        Create a clean, single-line image generation prompt for this concept: "${prompt}"
 
         Apply these specifications:
         - Style: ${styleTemplates[style] || styleTemplates['digital-art']}
@@ -88,23 +88,37 @@ class EnhancedGeminiService {
         - Technical details: Perfect composition, optimal lighting, rich details
         - Artistic elements: Creative perspective, emotional depth, visual impact
 
-        Generate a single, comprehensive prompt (no explanations, just the enhanced prompt):
+        IMPORTANT: Return ONLY the enhanced prompt text, no markdown, no explanations, no code blocks, no extra formatting.
+        The output should be a single descriptive sentence suitable for AI image generation.
       `;
       
       const result = await this.textModel.generateContent(enhancedPromptTemplate);
-      const enhancedPrompt = result.response.text().trim();
+      let enhancedPrompt = result.response.text().trim();
       
-      console.log('🎯 Enhanced prompt created by Gemini 2.0 Flash');
+      // Clean up the enhanced prompt - remove markdown formatting and unwanted characters
+      enhancedPrompt = enhancedPrompt
+        .replace(/```/g, '') // Remove markdown code blocks
+        .replace(/^\s*[\w\s]*:\s*/gm, '') // Remove labels like "Enhanced prompt:"
+        .replace(/\n\s*\n/g, ' ') // Replace multiple newlines with space
+        .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+        .trim();
+      
+      console.log('🎯 Enhanced prompt created and cleaned by Gemini 2.0 Flash');
+      console.log('📝 Cleaned prompt preview:', enhancedPrompt.substring(0, 100) + '...');
 
       // Generate with multiple fallbacks for reliability
       const imageGenerators = [
         {
-          name: 'Pollinations.ai',
+          name: 'Pollinations.ai (Enhanced)',
           url: `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=1024&height=1024&seed=${Math.floor(Math.random() * 1000000)}&model=flux&enhance=true`
         },
         {
-          name: 'Stable Diffusion',
-          url: `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=1024&height=1024&seed=${Math.floor(Math.random() * 1000000)}&model=turbo`
+          name: 'Pollinations.ai (Original)',
+          url: `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&seed=${Math.floor(Math.random() * 1000000)}&model=flux&enhance=true`
+        },
+        {
+          name: 'Stable Diffusion Turbo',
+          url: `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&seed=${Math.floor(Math.random() * 1000000)}&model=turbo`
         }
       ];
 
