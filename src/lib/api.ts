@@ -4,6 +4,13 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||
     ? 'https://zetaforge-backend.onrender.com/api' 
     : 'http://localhost:5000/api');
 
+// Debug environment variables
+console.log('🔧 API Configuration:', {
+  VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
+  MODE: import.meta.env.MODE,
+  final_API_BASE_URL: API_BASE_URL
+});
+
 export const API_ENDPOINTS = {
   generateAsset: `${API_BASE_URL}/generate-asset`,
   getAssets: `${API_BASE_URL}/assets`,
