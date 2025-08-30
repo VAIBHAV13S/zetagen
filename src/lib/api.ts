@@ -36,7 +36,14 @@ export async function callEdgeFunction(endpoint: string, data?: any) {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      let errorData;
+      try {
+        errorData = await response.json();
+        console.error('API Error Response:', errorData);
+      } catch (parseError) {
+        console.error('Failed to parse error response:', parseError);
+        errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
+      }
       throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
     }
 

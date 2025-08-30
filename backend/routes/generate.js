@@ -11,46 +11,76 @@ const router = express.Router();
 router.post('/generate-asset', asyncHandler(async (req, res) => {
   const { prompt, walletAddress, style = 'digital-art', quality = 'high', assetType = 'artwork' } = req.body;
 
-  // Enhanced validation
+  console.log('🔧 Generate Asset Request:', {
+    prompt: prompt?.substring(0, 50) + '...',
+    walletAddress,
+    style,
+    quality,
+    assetType,
+    bodyKeys: Object.keys(req.body)
+  });
+
+  // Enhanced validation with detailed error messages
   if (!prompt || !walletAddress) {
-    return res.status(400).json({
+    const error = {
       success: false,
-      error: 'Prompt and wallet address are required'
-    });
+      error: 'Prompt and wallet address are required',
+      details: {
+        promptProvided: !!prompt,
+        walletAddressProvided: !!walletAddress,
+        received: { prompt: prompt?.substring(0, 20), walletAddress }
+      }
+    };
+    console.error('❌ Validation failed:', error);
+    return res.status(400).json(error);
   }
 
   if (!ethers.isAddress(walletAddress)) {
-    return res.status(400).json({
+    const error = {
       success: false,
-      error: 'Invalid wallet address format'
-    });
+      error: 'Invalid wallet address format',
+      details: { receivedAddress: walletAddress }
+    };
+    console.error('❌ Invalid wallet address:', error);
+    return res.status(400).json(error);
   }
 
   if (prompt.length < 5) {
-    return res.status(400).json({
+    const error = {
       success: false,
-      error: 'Prompt too short (minimum 5 characters)'
-    });
+      error: 'Prompt too short (minimum 5 characters)',
+      details: { promptLength: prompt.length, prompt: prompt.substring(0, 50) }
+    };
+    console.error('❌ Prompt too short:', error);
+    return res.status(400).json(error);
   }
 
   if (prompt.length > 1000) {
-    return res.status(400).json({
+    const error = {
       success: false,
-      error: 'Prompt too long (max 1000 characters)'
-    });
+      error: 'Prompt too long (max 1000 characters)',
+      details: { promptLength: prompt.length }
+    };
+    console.error('❌ Prompt too long:', error);
+    return res.status(400).json(error);
   }
+
+  console.log('✅ Validation passed, starting generation...');
 
   // Generate unique asset ID
   const assetId = uuidv4();
   const startTime = Date.now();
 
-  // AI-powered generation with enhanced parameters
-  const [imageURL, aiMetadata] = await Promise.all([
-    generateImage(prompt, style, quality),
-    generateMetadata(prompt, assetType)
-  ]);
+  try {
+    // AI-powered generation with enhanced parameters
+    console.log('🤖 Starting AI generation...');
+    const [imageURL, aiMetadata] = await Promise.all([
+      generateImage(prompt, style, quality),
+      generateMetadata(prompt, assetType)
+    ]);
+    console.log('✅ AI generation completed successfully');
 
-  const generationTime = Date.now() - startTime;
+    const generationTime = Date.now() - startTime;
 
   // Enhanced asset metadata with AI-generated traits
   const metadata = {
@@ -122,6 +152,16 @@ router.post('/generate-asset', asyncHandler(async (req, res) => {
       }
     }
   });
+
+  } catch (error) {
+    console.error('❌ Generation failed:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Asset generation failed',
+      details: error.message,
+      stage: error.stage || 'unknown'
+    });
+  }
 }));
 
 /**
