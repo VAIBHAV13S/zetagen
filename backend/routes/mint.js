@@ -90,6 +90,30 @@ router.post('/mint', asyncHandler(async (req, res) => {
     : 'http://localhost:5000';
   const metadataURI = `${baseURL}/api/metadata/${assetId}`;
   
+  console.log(`🔗 Metadata URI: ${metadataURI}`);
+  
+  // Test metadata URI accessibility before minting
+  try {
+    const testResponse = await fetch(metadataURI);
+    if (!testResponse.ok) {
+      throw new Error(`Metadata URI not accessible: ${testResponse.status} ${testResponse.statusText}`);
+    }
+    const metadata = await testResponse.json();
+    console.log(`✅ Metadata URI is accessible and returns valid data:`, {
+      name: metadata.name,
+      imageExists: !!metadata.image,
+      attributesCount: metadata.attributes?.length || 0
+    });
+  } catch (error) {
+    console.error(`❌ Metadata URI test failed:`, error);
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid metadata URI',
+      details: error.message,
+      metadataURI
+    });
+  }
+  
   // Prepare enhanced traits from metadata
   const traits = asset.metadata.traits ? JSON.stringify([
     ...asset.metadata.traits,
@@ -100,6 +124,15 @@ router.post('/mint', asyncHandler(async (req, res) => {
   ]) : '';
 
   const startTime = Date.now();
+  
+  console.log(`📋 Cross-chain mint parameters:`, {
+    walletAddress,
+    sourceChain,
+    assetId,
+    prompt: asset.prompt.substring(0, 50) + '...',
+    metadataURI,
+    traitsCount: traits ? JSON.parse(traits).length : 0
+  });
   
   // Execute enhanced cross-chain mint with retry mechanism
   const mintResult = await crossChainMintAsset(
