@@ -5,12 +5,14 @@ import { Card } from '@/components/ui/card';
 import { useStore } from '@/store/useStore';
 import { useToast } from '@/hooks/use-toast';
 import { useSEO, seoConfigs } from '@/hooks/useSEO';
-import { connectWallet } from '@/lib/wallet';
-import { ArrowRight, Sparkles, Zap, Shield, Globe } from 'lucide-react';
+import { connectWallet, isMetaMaskInstalled } from '@/lib/wallet';
+import { WalletStatus } from '@/components/ui/wallet-status';
+import { WalletDebug } from '@/components/ui/wallet-debug';
+import { ArrowRight, Sparkles, Zap, Shield, Globe, AlertCircle } from 'lucide-react';
 import heroImage from '@/assets/hero-image.jpg';
 
 const Landing = () => {
-  const { isWalletConnected, connectWallet: setWalletConnected } = useStore();
+  const { isWalletConnected, walletAddress, connectWallet: setWalletConnected } = useStore();
   const { toast } = useToast();
 
   // SEO optimization
@@ -18,6 +20,16 @@ const Landing = () => {
 
   const handleConnectWallet = async () => {
     try {
+      // Check if MetaMask is installed
+      if (!isMetaMaskInstalled()) {
+        toast({
+          title: "MetaMask Required",
+          description: "Please install MetaMask extension to connect your wallet.",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const address = await connectWallet();
       setWalletConnected(address);
       toast({
@@ -26,9 +38,24 @@ const Landing = () => {
       });
     } catch (error: any) {
       console.error('Wallet connection failed:', error);
+      
+      let errorMessage = "Failed to connect wallet. Please try again.";
+      
+      if (error.message.includes('MetaMask not found')) {
+        errorMessage = "MetaMask extension not found. Please install MetaMask.";
+      } else if (error.message.includes('User rejected')) {
+        errorMessage = "Wallet connection was cancelled by user.";
+      } else if (error.message.includes('No accounts found')) {
+        errorMessage = "No accounts found. Please unlock MetaMask and try again.";
+      } else if (error.message.includes('ZetaChain network')) {
+        errorMessage = "Failed to switch to ZetaChain network. Please add it manually in MetaMask.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Connection failed",
-        description: error.message || "Failed to connect wallet. Please try again.",
+        description: errorMessage,
         variant: "destructive"
       });
     }
@@ -90,6 +117,15 @@ const Landing = () => {
                 Create AI-generated digital assets and mint them cross-chain. 
                 The future of decentralized content creation is here.
               </motion.p>
+
+              {/* Wallet Status */}
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.5 }}
+              >
+                <WalletStatus isConnected={isWalletConnected} walletAddress={walletAddress} />
+              </motion.div>
 
               <motion.div 
                 className="flex flex-col sm:flex-row gap-4"
@@ -202,6 +238,30 @@ const Landing = () => {
                 </Card>
               </motion.div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Wallet Debug Section */}
+      <section className="py-20">
+        <div className="container mx-auto px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-4xl font-bold mb-4">
+              Having <span className="bg-gradient-secondary bg-clip-text text-transparent">Connection Issues</span>?
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Use our diagnostic tool to troubleshoot wallet connection problems
+            </p>
+          </motion.div>
+
+          <div className="flex justify-center">
+            <WalletDebug />
           </div>
         </div>
       </section>

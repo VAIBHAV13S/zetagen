@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { callEdgeFunction, API_ENDPOINTS } from '@/lib/api';
+import { checkWalletConnection, watchAccountChanges, watchChainChanges } from '@/lib/wallet';
 
 export interface Asset {
   id: string;
@@ -21,6 +22,7 @@ interface AppState {
   walletAddress: string | null;
   connectWallet: (address: string) => void;
   disconnectWallet: () => void;
+  initializeWallet: () => Promise<void>;
 
   // Assets
   assets: Asset[];
@@ -56,8 +58,62 @@ export const useStore = create<AppState>((set, get) => ({
   galleryFilter: 'all',
 
   // Wallet actions
-  connectWallet: (address) => set({ isWalletConnected: true, walletAddress: address }),
-  disconnectWallet: () => set({ isWalletConnected: false, walletAddress: null }),
+  connectWallet: (address) => {
+    set({ isWalletConnected: true, walletAddress: address });
+    // Store in localStorage for persistence
+    localStorage.setItem('walletAddress', address);
+    localStorage.setItem('isWalletConnected', 'true');
+  },
+  
+  disconnectWallet: () => {
+    set({ isWalletConnected: false, walletAddress: null });
+    // Clear from localStorage
+    localStorage.removeItem('walletAddress');
+    localStorage.removeItem('isWalletConnected');
+  },
+
+  initializeWallet: async () => {
+    try {
+      // Check if wallet was previously connected
+      const storedAddress = localStorage.getItem('walletAddress');
+      const wasConnected = localStorage.getItem('isWalletConnected') === 'true';
+      
+      if (wasConnected && storedAddress) {
+        // Check if wallet is still connected
+        const currentAddress = await checkWalletConnection();
+        if (currentAddress && currentAddress.toLowerCase() === storedAddress.toLowerCase()) {
+          set({ isWalletConnected: true, walletAddress: currentAddress });
+          console.log('Wallet reconnected on app load:', currentAddress);
+        } else {
+          // Clear stored data if wallet is no longer connected
+          localStorage.removeItem('walletAddress');
+          localStorage.removeItem('isWalletConnected');
+        }
+      }
+
+      // Set up wallet event listeners
+      watchAccountChanges((accounts) => {
+        if (accounts.length === 0) {
+          // User disconnected wallet
+          get().disconnectWallet();
+        } else {
+          // User switched accounts
+          const newAddress = accounts[0];
+          if (newAddress !== get().walletAddress) {
+            get().connectWallet(newAddress);
+          }
+        }
+      });
+
+      watchChainChanges((chainId) => {
+        console.log('Chain changed to:', chainId);
+        // You can add logic here to handle chain changes
+      });
+
+    } catch (error) {
+      console.error('Failed to initialize wallet:', error);
+    }
+  },
 
   // Asset actions
   setCurrentAsset: (asset) => set({ currentAsset: asset }),

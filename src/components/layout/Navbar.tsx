@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useStore } from '@/store/useStore';
 import { useToast } from '@/hooks/use-toast';
-import { connectWallet } from '@/lib/wallet';
+import { connectWallet, isMetaMaskInstalled } from '@/lib/wallet';
 import { Zap, Wallet, LogOut } from 'lucide-react';
 
 const Navbar = () => {
@@ -13,6 +13,16 @@ const Navbar = () => {
 
   const handleConnectWallet = async () => {
     try {
+      // Check if MetaMask is installed
+      if (!isMetaMaskInstalled()) {
+        toast({
+          title: "MetaMask Required",
+          description: "Please install MetaMask extension to connect your wallet.",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const address = await connectWallet();
       setWalletConnected(address);
       toast({
@@ -21,9 +31,24 @@ const Navbar = () => {
       });
     } catch (error: any) {
       console.error('Wallet connection failed:', error);
+      
+      let errorMessage = "Failed to connect wallet. Please try again.";
+      
+      if (error.message.includes('MetaMask not found')) {
+        errorMessage = "MetaMask extension not found. Please install MetaMask.";
+      } else if (error.message.includes('User rejected')) {
+        errorMessage = "Wallet connection was cancelled by user.";
+      } else if (error.message.includes('No accounts found')) {
+        errorMessage = "No accounts found. Please unlock MetaMask and try again.";
+      } else if (error.message.includes('ZetaChain network')) {
+        errorMessage = "Failed to switch to ZetaChain network. Please add it manually in MetaMask.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Connection failed",
-        description: error.message || "Failed to connect wallet. Please try again.",
+        description: errorMessage,
         variant: "destructive"
       });
     }
