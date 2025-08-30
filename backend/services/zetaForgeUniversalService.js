@@ -231,6 +231,11 @@ class EnhancedZetaForgeUniversalService {
      * Enhanced cross-chain mint with retry mechanism and gas optimization
      */
     async crossChainMintAsset(walletAddress, sourceChain, assetId, prompt, metadataURI, traits) {
+        // Check if service is available
+        if (!this.universalContract) {
+            throw new Error('Universal contract is not initialized. Please check your environment variables (ZETACHAIN_RPC_URL, ZETACHAIN_PRIVATE_KEY, ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS).');
+        }
+
         const startTime = Date.now();
         let attempt = 0;
 
