@@ -143,78 +143,59 @@ class EnhancedGeminiService {
         console.log('� Falling back to external image generation service...');
       }
 
-      // Fallback to multiple external image generation services
+      // Fallback to multiple external image generation services with simpler URLs
       const imageGenerators = [
         {
           name: 'Pollinations.ai (Simple)',
-          url: `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&model=flux&nologo=true`
+          url: `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&model=flux`
         },
         {
-          name: 'Pollinations.ai (Enhanced)',
-          url: `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=1024&height=1024&model=flux&nologo=true`
-        },
-        {
-          name: 'Alternative Image Service',
-          url: `https://api.limewire.com/api/image/generation?prompt=${encodeURIComponent(prompt)}&aspect_ratio=1:1&quality=HIGH&style=PHOTOREALISTIC`
+          name: 'Pollinations.ai (Enhanced Simple)',
+          url: `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=1024&height=1024&model=flux`
         },
         {
           name: 'Pollinations.ai (Turbo)',
-          url: `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&model=turbo&nologo=true`
+          url: `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&model=turbo`
         }
       ];
 
       let imageURL;
       let usedGenerator;
-      let fallbackURL;
       
-      for (let i = 0; i < imageGenerators.length; i++) {
-        const generator = imageGenerators[i];
+      for (const generator of imageGenerators) {
         try {
           const testURL = generator.url;
-          // Test if URL is accessible
-          const response = await fetch(testURL, { method: 'HEAD', timeout: 10000 });
+          // Test if URL is accessible with shorter timeout
+          const response = await fetch(testURL, { method: 'HEAD', timeout: 8000 });
           if (response.ok) {
             console.log(`✅ Image generated successfully using ${generator.name}`);
             imageURL = testURL;
             usedGenerator = generator.name;
-            
-            // Set fallback to next working service
-            if (i + 1 < imageGenerators.length) {
-              fallbackURL = imageGenerators[i + 1].url;
-            }
             break;
           }
         } catch (error) {
-          console.warn(`⚠️ ${generator.name} failed, trying next option...`);
+          console.warn(`⚠️ ${generator.name} failed (${error.message}), trying next option...`);
           continue;
         }
       }
 
       if (!imageURL) {
-        throw new Error('All image generation services failed');
+        // Fallback to a simple working URL without testing
+        console.log('⚠️ All services failed validation, using fallback URL');
+        imageURL = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&model=flux`;
+        usedGenerator = 'Fallback Service';
       }
 
-      // Create proxy URL to serve through our backend (avoids CORS issues)
-      const baseURL = process.env.BASE_URL || 'http://localhost:5000';
-      let proxyURL = `${baseURL}/api/image/proxy-image?url=${encodeURIComponent(imageURL)}`;
-      
-      // Add fallback if available
-      if (fallbackURL) {
-        proxyURL += `&fallback=${encodeURIComponent(fallbackURL)}`;
-      }
-
-      console.log('🔗 Created proxy URL for reliable image serving');
+      console.log('🔗 Using direct image URL (simplified approach)');
 
       const result_data = {
-        imageURL: proxyURL, // Use proxy URL instead of direct URL
-        originalURL: imageURL, // Keep original for reference
-        fallbackURL: fallbackURL,
+        imageURL, // Use direct URL (simpler and more reliable)
         enhancedPrompt,
         originalPrompt: prompt,
         style,
         quality,
         generator: usedGenerator || 'External Service',
-        format: 'proxy'
+        format: 'url'
       };
 
       this.setCache(cacheKey, result_data);
