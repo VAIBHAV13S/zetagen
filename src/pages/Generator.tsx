@@ -135,6 +135,68 @@ const Generator = () => {
     }
   };
 
+  const handleDownload = async () => {
+    if (!currentAsset?.imageUrl) return;
+
+    try {
+      const response = await fetch(currentAsset.imageUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `zetaforge-${currentAsset.metadata.name.replace(/\s+/g, '-').toLowerCase()}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Download Started",
+        description: "Your asset is being downloaded",
+      });
+    } catch (error) {
+      toast({
+        title: "Download Failed",
+        description: "Failed to download the image. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleShare = async () => {
+    if (!currentAsset) return;
+
+    const shareData = {
+      title: `${currentAsset.metadata.name} - ZetaForge AI`,
+      text: `Check out this AI-generated asset: "${currentAsset.prompt}"`,
+      url: window.location.href,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        toast({
+          title: "Shared Successfully",
+          description: "Asset shared successfully",
+        });
+      } else {
+        // Fallback: copy to clipboard
+        await navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
+        toast({
+          title: "Copied to Clipboard",
+          description: "Share link copied to clipboard",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Share Failed",
+        description: "Failed to share. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen pt-20">
       <div className="container mx-auto px-6 py-12">
@@ -290,6 +352,7 @@ const Generator = () => {
                             variant="outline"
                             size="sm"
                             className="flex-1 border-primary/30"
+                            onClick={handleDownload}
                           >
                             <Download className="mr-2 h-4 w-4" />
                             Download
@@ -298,6 +361,7 @@ const Generator = () => {
                             variant="outline"
                             size="sm"
                             className="flex-1 border-primary/30"
+                            onClick={handleShare}
                           >
                             <Share className="mr-2 h-4 w-4" />
                             Share

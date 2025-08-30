@@ -81,7 +81,7 @@ export const useStore = create<AppState>((set, get) => ({
         const newAsset: Asset = {
           id: response.asset.assetId,
           prompt: response.asset.prompt,
-          imageUrl: response.asset.imageUrl,
+          imageUrl: response.asset.imageUrl || response.asset.imageURL, // Handle both property names
           owner: response.asset.owner,
           metadata: response.asset.metadata,
           isMinted: response.asset.isMinted,
