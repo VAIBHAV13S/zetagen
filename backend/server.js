@@ -12,6 +12,7 @@ import assetsRoutes from './routes/assets.js';
 import mintRoutes from './routes/mint.js';
 import suggestRoutes from './routes/suggest.js';
 import universalRoutes from './routes/universal.js';
+import debugRoutes from './routes/debug.js';
 
 // Load environment variables
 dotenv.config();
@@ -78,6 +79,7 @@ app.use('/api', assetsRoutes);
 app.use('/api', mintLimiter, mintRoutes);
 app.use('/api', suggestLimiter, suggestRoutes);
 app.use('/api/universal', universalRoutes);
+app.use('/api/debug', debugRoutes);
 
 // API info endpoint
 app.get('/api', (req, res) => {
