@@ -7,8 +7,8 @@ const router = express.Router();
 router.get('/contract', asyncHandler(async (req, res) => {
   const assetId = req.query.assetId;
 
-  if (!process.env.ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS) {
-    return res.status(500).json({ success: false, error: 'ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS not configured' });
+  if (!process.env.ZETAGEN_UNIVERSAL_CONTRACT_ADDRESS) {
+    return res.status(500).json({ success: false, error: 'ZETAGEN_UNIVERSAL_CONTRACT_ADDRESS not configured' });
   }
 
   if (!assetId) {
@@ -22,13 +22,13 @@ router.get('/contract', asyncHandler(async (req, res) => {
     const { fileURLToPath } = await import('url');
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
-    const abiPath = path.join(__dirname, '../abi/ZetaForgeUniversalV2.json');
+    const abiPath = path.join(__dirname, '../abi/ZetaGenUniversalV2.json');
     const abiData = await fs.readFile(abiPath, 'utf8');
     const abiJson = JSON.parse(abiData);
     const abi = Array.isArray(abiJson) ? abiJson : (abiJson.abi || []);
 
     const provider = new ethers.JsonRpcProvider(process.env.ZETACHAIN_RPC_URL);
-    const contractAddress = process.env.ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS;
+    const contractAddress = process.env.ZETAGEN_UNIVERSAL_CONTRACT_ADDRESS;
 
     // Check if contract has code at address
     const code = await provider.getCode(contractAddress);
@@ -122,8 +122,8 @@ router.get('/debug/status', asyncHandler(async (req, res) => {
     configuration: {
       zetaChainRPC: process.env.ZETACHAIN_RPC_URL ? 'configured' : 'missing',
       privateKey: process.env.ZETACHAIN_PRIVATE_KEY ? 'configured' : 'missing',
-      universalContract: process.env.ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS ? 'configured' : 'missing',
-      legacyContract: process.env.ZETAFORGE_LEGACY_CONTRACT_ADDRESS ? 'configured' : 'missing',
+      universalContract: process.env.ZETAGEN_UNIVERSAL_CONTRACT_ADDRESS ? 'configured' : 'missing',
+      legacyContract: process.env.ZETAGEN_LEGACY_CONTRACT_ADDRESS ? 'configured' : 'missing',
       mongodb: process.env.MONGODB_URI ? 'configured' : 'missing',
       googleAI: process.env.GOOGLE_AI_API_KEY ? 'configured' : 'missing'
     },
@@ -174,8 +174,8 @@ router.get('/debug/status', asyncHandler(async (req, res) => {
   }
 
   // Add configuration recommendations
-  if (!process.env.ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS) {
-    status.recommendations.push('Deploy Universal V2 contract and set ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS');
+  if (!process.env.ZETAGEN_UNIVERSAL_CONTRACT_ADDRESS) {
+    status.recommendations.push('Deploy Universal V2 contract and set ZETAGEN_UNIVERSAL_CONTRACT_ADDRESS');
   }
 
   if (!process.env.MONGODB_URI) {
@@ -196,7 +196,7 @@ router.get('/debug/config', asyncHandler(async (req, res) => {
     port: process.env.PORT || 5000,
     cors: {
       allowedOrigins: process.env.NODE_ENV === 'production' 
-        ? [process.env.FRONTEND_URL, 'https://zetaforge-universal-app-v2.vercel.app'] 
+        ? [process.env.FRONTEND_URL, 'https://zetagen-universal-app-v2.vercel.app'] 
         : ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173']
     },
     features: {
@@ -206,7 +206,7 @@ router.get('/debug/config', asyncHandler(async (req, res) => {
     services: {
       database: !!process.env.MONGODB_URI,
       blockchain: !!(process.env.ZETACHAIN_RPC_URL && process.env.ZETACHAIN_PRIVATE_KEY),
-      contracts: !!(process.env.ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS && process.env.ZETAFORGE_LEGACY_CONTRACT_ADDRESS),
+      contracts: !!(process.env.ZETAGEN_UNIVERSAL_CONTRACT_ADDRESS && process.env.ZETAGEN_LEGACY_CONTRACT_ADDRESS),
       ai: !!process.env.GOOGLE_AI_API_KEY
     }
   };
@@ -222,7 +222,7 @@ router.get('/debug/config', asyncHandler(async (req, res) => {
 router.get('/debug/test-mint', asyncHandler(async (req, res) => {
   try {
     // Test if minting service can be initialized
-    const { crossChainMintAsset } = await import('../services/zetaForgeUniversalService.js');
+    const { crossChainMintAsset } = await import('../services/zetaGenUniversalService.js');
     
     res.json({
       success: true,
@@ -235,7 +235,7 @@ router.get('/debug/test-mint', asyncHandler(async (req, res) => {
       error: 'Minting service test failed',
       details: error.message,
       recommendations: [
-        'Check environment variables: ZETACHAIN_RPC_URL, ZETACHAIN_PRIVATE_KEY, ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS',
+        'Check environment variables: ZETACHAIN_RPC_URL, ZETACHAIN_PRIVATE_KEY, ZETAGEN_UNIVERSAL_CONTRACT_ADDRESS',
         'Ensure contracts are deployed and addresses are correct',
         'Verify ZetaChain RPC endpoint is accessible'
       ]

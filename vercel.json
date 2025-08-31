@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "name": "zetaforge-universal-app-v2",
+  "name": "zetagen-universal-app-v2",
   "builds": [
     {
       "src": "package.json",
@@ -13,7 +13,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://zetaforge-backend.onrender.com/api/$1"
+      "destination": "https://zetagen-backend.onrender.com/api/$1"
     },
     {
       "source": "/(.*)",
@@ -53,11 +53,11 @@
   ],
   "env": {
     "NODE_ENV": "production",
-    "VITE_API_BASE_URL": "https://zetaforge-backend.onrender.com/api"
+    "VITE_API_BASE_URL": "https://zetagen-backend.onrender.com/api"
   },
   "build": {
     "env": {
-      "VITE_API_BASE_URL": "https://zetaforge-backend.onrender.com/api"
+      "VITE_API_BASE_URL": "https://zetagen-backend.onrender.com/api"
     }
   }
 }

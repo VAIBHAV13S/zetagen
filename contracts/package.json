@@ -1,7 +1,7 @@
 {
-  "name": "zeta-gen-contracts",
+  "name": "zetagen-contracts",
   "version": "1.0.0",
-  "description": "Smart contracts for Zeta-Gen AI-powered NFT platform",
+  "description": "Smart contracts for ZetaGen AI-powered NFT platform",
   "main": "index.js",
   "scripts": {
     "compile": "hardhat compile",
@@ -23,7 +23,7 @@
     "zetachain",
     "ai"
   ],
-  "author": "Zeta-Gen Team",
+  "author": "ZetaGen Team",
   "license": "MIT",
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.0",

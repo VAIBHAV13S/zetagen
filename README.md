@@ -303,8 +303,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- **Discord**: [Join our community](https://discord.gg/zetaforge)
-- **Documentation**: [Full API docs](https://docs.zetaforge.ai)
+- **Discord**: [Join our community](https://discord.gg/zetagen)
+- **Documentation**: [Full API docs](https://docs.zetagen.ai)
 - **Issues**: [GitHub Issues](https://github.com/your-username/zetagen/issues)
 
 ## 🏆 Hackathon Features

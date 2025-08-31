@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: zetaforge-backend
+    name: zetagen-backend
     env: node
     plan: free
     rootDir: backend
@@ -12,10 +12,10 @@ services:
       - key: PORT
         value: 10000
       - key: FRONTEND_URL
-        value: https://zetaforge-universal-app-v2.vercel.app
+        value: https://zetagen-universal-app-v2.vercel.app
       - key: MONGODB_URI
         fromDatabase:
-          name: zetaforge-mongodb
+          name: zetagen-mongodb
           property: connectionString
       - key: GEMINI_API_KEY
         sync: false
@@ -23,9 +23,9 @@ services:
         value: https://zetachain-athens-evm.blockpi.network/v1/rpc/public
       - key: ZETACHAIN_PRIVATE_KEY
         sync: false
-      - key: ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS
+      - key: ZETAGEN_UNIVERSAL_CONTRACT_ADDRESS
         value: 0xd306C9a30359EB053F23C92F754206d2fe0Ed93e
-      - key: ZETAFORGE_LEGACY_CONTRACT_ADDRESS
+      - key: ZETAGEN_LEGACY_CONTRACT_ADDRESS
         value: 0xDE1bE2A2bc97D2B42cDB61812d90214bB2778326
       - key: UNIVERSAL_MODE_ENABLED
         value: true

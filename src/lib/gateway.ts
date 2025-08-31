@@ -1,4 +1,4 @@
-// Gateway API Integration for ZetaForge
+// Gateway API Integration for ZetaGen
 // Advanced cross-chain functionality for prize-winning innovation
 
 export interface GatewayTransaction {

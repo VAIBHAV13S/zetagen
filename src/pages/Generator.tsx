@@ -247,7 +247,7 @@ const Generator: React.FC = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `zetaforge-${currentAsset.id || 'asset'}${fileExtension}`;
+      link.download = `zetagen-${currentAsset.id || 'asset'}${fileExtension}`;
       
       document.body.appendChild(link);
       link.click();
@@ -282,7 +282,7 @@ const Generator: React.FC = () => {
     if (!currentAsset) return;
 
     const shareData = {
-      title: `${currentAsset.metadata.name} - ZetaForge AI`,
+      title: `${currentAsset.metadata.name} - ZetaGen AI`,
       text: `Check out this AI-generated asset: "${currentAsset.prompt}"`,
       url: window.location.href,
     };

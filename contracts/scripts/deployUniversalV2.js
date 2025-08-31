@@ -112,7 +112,7 @@ async function main() {
     
     // Update .env file suggestion
     console.log("\n📝 Update your backend .env file:");
-    console.log(`ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS=${contractAddress}`);
+    console.log(`ZETAGEN_UNIVERSAL_CONTRACT_ADDRESS=${contractAddress}`);
     console.log(`ZETAFORGE_LEGACY_CONTRACT_ADDRESS=${LEGACY_CONTRACT}`);
     
     console.log("\n🎉 Universal App V2 deployment completed successfully!");

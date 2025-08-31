@@ -1,19 +1,19 @@
 import { ethers, Interface } from 'ethers';
 
 /**
- * Enhanced ZetaForge Universal Service V2
+ * Enhanced ZetaGen Universal Service V2
  * Provides comprehensive NFT minting, migration, and management functionality
  */
-class EnhancedZetaForgeUniversalService {
+class EnhancedZetaGenUniversalService {
     constructor() {
-        console.log('🚀 Initializing Enhanced ZetaForge Universal Service V2');
+        console.log('🚀 Initializing Enhanced ZetaGen Universal Service V2');
         
         // Environment validation
         const requiredEnvVars = [
             'ZETACHAIN_RPC_URL',
             'ZETACHAIN_PRIVATE_KEY',
-            'ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS',
-            'ZETAFORGE_LEGACY_CONTRACT_ADDRESS'
+            'ZETAGEN_UNIVERSAL_CONTRACT_ADDRESS',
+            'ZETAGEN_LEGACY_CONTRACT_ADDRESS'
         ];
         
         const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
@@ -59,7 +59,7 @@ class EnhancedZetaForgeUniversalService {
         this.legacyContract = null;
         this.crossChainEnabled = false;
 
-        console.log("Contract Address:", process.env.ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS);
+        console.log("Contract Address:", process.env.ZETAGEN_UNIVERSAL_CONTRACT_ADDRESS);
         console.log("Provider exists?", !!this.provider);
         console.log("Wallet exists?", !!this.wallet);
     }
@@ -80,7 +80,7 @@ class EnhancedZetaForgeUniversalService {
                 
                 const __filename = fileURLToPath(import.meta.url);
                 const __dirname = path.dirname(__filename);
-                const abiPath = path.join(__dirname, '../abi/ZetaForgeUniversalV2.json');
+                const abiPath = path.join(__dirname, '../abi/ZetaGenUniversalV2.json');
                 
                 console.log('📁 Looking for ABI at:', abiPath);
                 
@@ -171,7 +171,7 @@ class EnhancedZetaForgeUniversalService {
             // Create Universal contract instance
             try {
                 this.universalContract = new ethers.Contract(
-                    process.env.ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS,
+                    process.env.ZETAGEN_UNIVERSAL_CONTRACT_ADDRESS,
                     universalABI,
                     this.wallet
                 );
@@ -189,7 +189,7 @@ class EnhancedZetaForgeUniversalService {
                 
                 const __filename = fileURLToPath(import.meta.url);
                 const __dirname = path.dirname(__filename);
-                const legacyAbiPath = path.join(__dirname, '../abi/ZetaForgeLegacy.json');
+                const legacyAbiPath = path.join(__dirname, '../abi/ZetaGenLegacy.json');
                 
                 console.log('📁 Looking for Legacy ABI at:', legacyAbiPath);
                 
@@ -209,7 +209,7 @@ class EnhancedZetaForgeUniversalService {
                 }
                 
                 this.legacyContract = new ethers.Contract(
-                    process.env.ZETAFORGE_LEGACY_CONTRACT_ADDRESS,
+                    process.env.ZETAGEN_LEGACY_CONTRACT_ADDRESS,
                     legacyABI,
                     this.wallet
                 );
@@ -246,7 +246,7 @@ class EnhancedZetaForgeUniversalService {
             // Start health monitoring
             this.startHealthMonitoring();
             
-            console.log("✅ Enhanced ZetaForge Universal Service V2 initialized successfully");
+            console.log("✅ Enhanced ZetaGen Universal Service V2 initialized successfully");
             
         } catch (err) {
             console.error("❌ Failed to initialize service:", err);
@@ -331,7 +331,7 @@ class EnhancedZetaForgeUniversalService {
                 },
                 contracts: {
                     universal: {
-                        address: process.env.ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS,
+                        address: process.env.ZETAGEN_UNIVERSAL_CONTRACT_ADDRESS,
                         totalSupply: universalSupply.toString(),
                         mintPrice: ethers.formatEther(mintPrice),
                         universalMode: universalMode,
@@ -341,7 +341,7 @@ class EnhancedZetaForgeUniversalService {
                         version: '2.0'
                     },
                     legacy: {
-                        address: process.env.ZETAFORGE_LEGACY_CONTRACT_ADDRESS,
+                        address: process.env.ZETAGEN_LEGACY_CONTRACT_ADDRESS,
                         totalSupply: legacySupply.toString(),
                         maxSupply: '10000',
                         tokenIdRange: '1-10000',
@@ -393,7 +393,7 @@ class EnhancedZetaForgeUniversalService {
     async mintAsset(walletAddress, sourceChain, assetId, prompt, metadataURI, traits) {
         // Check if service is available
         if (!this.universalContract) {
-            throw new Error('Universal contract is not initialized. Please check your environment variables (ZETACHAIN_RPC_URL, ZETACHAIN_PRIVATE_KEY, ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS).');
+            throw new Error('Universal contract is not initialized. Please check your environment variables (ZETACHAIN_RPC_URL, ZETACHAIN_PRIVATE_KEY, ZETAGEN_UNIVERSAL_CONTRACT_ADDRESS).');
         }
 
         const startTime = Date.now();
@@ -422,7 +422,7 @@ class EnhancedZetaForgeUniversalService {
                 // Construct AssetMetadata struct
                 const assetMetadata = {
                     assetId,
-                    name: metadataJson.name || 'ZetaForge AI Generated',
+                    name: metadataJson.name || 'ZetaGen AI Generated',
                     description: metadataJson.description || prompt,
                     imageUrl: metadataJson.image || '',
                     traitTypes: metadataJson.attributes ? metadataJson.attributes.map(attr => attr.trait_type || '') : [],
@@ -447,7 +447,7 @@ class EnhancedZetaForgeUniversalService {
 
                 // Estimate gas using the encoded data
                 const gasEstimate = await this.provider.estimateGas({
-                    to: process.env.ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS,
+                    to: process.env.ZETAGEN_UNIVERSAL_CONTRACT_ADDRESS,
                     data: functionData,
                     value: fee,
                     from: this.wallet.address
@@ -467,7 +467,7 @@ class EnhancedZetaForgeUniversalService {
 
                 // Send transaction using the encoded function data
                 const tx = await this.wallet.sendTransaction({
-                    to: process.env.ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS,
+                    to: process.env.ZETAGEN_UNIVERSAL_CONTRACT_ADDRESS,
                     data: functionData,
                     value: fee,
                     gasLimit: finalGasLimit,
@@ -519,7 +519,7 @@ class EnhancedZetaForgeUniversalService {
     async crossChainMintAsset(walletAddress, sourceChain, assetId, prompt, metadataURI, traits) {
         // Check if service is available
         if (!this.universalContract) {
-            throw new Error('Universal contract is not initialized. Please check your environment variables (ZETACHAIN_RPC_URL, ZETACHAIN_PRIVATE_KEY, ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS).');
+            throw new Error('Universal contract is not initialized. Please check your environment variables (ZETACHAIN_RPC_URL, ZETACHAIN_PRIVATE_KEY, ZETAGEN_UNIVERSAL_CONTRACT_ADDRESS).');
         }
 
         const startTime = Date.now();
@@ -548,7 +548,7 @@ class EnhancedZetaForgeUniversalService {
                 // Construct AssetMetadata struct
                 const assetMetadata = {
                     assetId,
-                    name: metadataJson.name || 'ZetaForge AI Generated',
+                    name: metadataJson.name || 'ZetaGen AI Generated',
                     description: metadataJson.description || prompt,
                     imageUrl: metadataJson.image || '',
                     traitTypes: metadataJson.attributes ? metadataJson.attributes.map(attr => attr.trait_type || '') : [],
@@ -578,7 +578,7 @@ class EnhancedZetaForgeUniversalService {
 
                 // Estimate gas using the encoded data
                 const gasEstimateFinal = await this.provider.estimateGas({
-                    to: process.env.ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS,
+                    to: process.env.ZETAGEN_UNIVERSAL_CONTRACT_ADDRESS,
                     data: functionData,
                     value: fee,
                     from: this.wallet.address
@@ -592,7 +592,7 @@ class EnhancedZetaForgeUniversalService {
 
                 // Send cross-chain transaction
                 const tx = await this.wallet.sendTransaction({
-                    to: process.env.ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS,
+                    to: process.env.ZETAGEN_UNIVERSAL_CONTRACT_ADDRESS,
                     data: functionData,
                     value: fee,
                     gasLimit: finalGasLimit,
@@ -782,8 +782,8 @@ class EnhancedZetaForgeUniversalService {
                 newTokenId: newTokenId.toString(),
                 assetId: legacyMetadata.assetId,
                 gasUsed: receipt.gasUsed.toString(),
-                legacyContract: process.env.ZETAFORGE_LEGACY_CONTRACT_ADDRESS,
-                universalContract: process.env.ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS,
+                legacyContract: process.env.ZETAGEN_LEGACY_CONTRACT_ADDRESS,
+                universalContract: process.env.ZETAGEN_UNIVERSAL_CONTRACT_ADDRESS,
                 originalMetadata: legacyMetadata,
                 enhancedMetadata: newMetadata,
                 migrationTime: Date.now()
@@ -821,8 +821,8 @@ class EnhancedZetaForgeUniversalService {
                     hasMore: false
                 },
                 contracts: {
-                    universal: process.env.ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS,
-                    legacy: process.env.ZETAFORGE_LEGACY_CONTRACT_ADDRESS
+                    universal: process.env.ZETAGEN_UNIVERSAL_CONTRACT_ADDRESS,
+                    legacy: process.env.ZETAGEN_LEGACY_CONTRACT_ADDRESS
                 }
             };
 
@@ -838,7 +838,7 @@ class EnhancedZetaForgeUniversalService {
                     timestamp: Number(result.timestamps[index]),
                     sourceChain: Number(result.sourceChains[index]),
                     contract: 'universal',
-                    contractAddress: process.env.ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS
+                    contractAddress: process.env.ZETAGEN_UNIVERSAL_CONTRACT_ADDRESS
                 }));
 
                 // Add enhanced metadata if requested
@@ -873,7 +873,7 @@ class EnhancedZetaForgeUniversalService {
                             const asset = {
                                 tokenId: tokenId.toString(),
                                 contract: 'legacy',
-                                contractAddress: process.env.ZETAFORGE_LEGACY_CONTRACT_ADDRESS
+                                contractAddress: process.env.ZETAGEN_LEGACY_CONTRACT_ADDRESS
                             };
 
                             if (includeMetadata) {
@@ -1011,7 +1011,7 @@ class EnhancedZetaForgeUniversalService {
 
                 // Ensure to set `to` and `value` when estimating
                 const estimateRequest = {
-                    to: process.env.ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS,
+                    to: process.env.ZETAGEN_UNIVERSAL_CONTRACT_ADDRESS,
                     data: txRequest.data,
                     value: txRequest.value || fee
                 };
@@ -1166,7 +1166,7 @@ class EnhancedZetaForgeUniversalService {
                     ...metadata,
                     contract: 'universal',
                     tokenId: tokenId.toString(),
-                    contractAddress: process.env.ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS
+                    contractAddress: process.env.ZETAGEN_UNIVERSAL_CONTRACT_ADDRESS
                 };
             }
             
@@ -1179,33 +1179,33 @@ class EnhancedZetaForgeUniversalService {
 }
 
 // Create a singleton instance and initialize ABI
-const zetaForgeService = new EnhancedZetaForgeUniversalService();
-await zetaForgeService.init();
+const zetaGenService = new EnhancedZetaGenUniversalService();
+await zetaGenService.init();
 
 // Export both the class and individual functions for backward compatibility
-export default EnhancedZetaForgeUniversalService;
+export default EnhancedZetaGenUniversalService;
 
 // Export individual functions that routes expect
 export const crossChainMintAsset = (walletAddress, sourceChain, assetId, prompt, metadataURI, traits) => 
-    zetaForgeService.crossChainMintAsset(walletAddress, sourceChain, assetId, prompt, metadataURI, traits);
+    zetaGenService.crossChainMintAsset(walletAddress, sourceChain, assetId, prompt, metadataURI, traits);
 
 export const mintAsset = (walletAddress, sourceChain, assetId, prompt, metadataURI, traits) => 
-    zetaForgeService.mintAsset(walletAddress, sourceChain, assetId, prompt, metadataURI, traits);
+    zetaGenService.mintAsset(walletAddress, sourceChain, assetId, prompt, metadataURI, traits);
 
 export const batchMintAssets = (mintRequests, batchSize) => 
-    zetaForgeService.batchMintAssets(mintRequests, batchSize);
+    zetaGenService.batchMintAssets(mintRequests, batchSize);
 
 export const isAssetMinted = (assetId) => 
-    zetaForgeService.isAssetMinted(assetId);
+    zetaGenService.isAssetMinted(assetId);
 
 export const getAssetMetadata = (assetId) => 
-    zetaForgeService.getAssetMetadata(assetId);
+    zetaGenService.getAssetMetadata(assetId);
 
 export const getUserAssets = (walletAddress) => 
-    zetaForgeService.getUserAssets(walletAddress);
+    zetaGenService.getUserAssets(walletAddress);
 
 export const getContractInfo = () => 
-    zetaForgeService.getContractInfo();
+    zetaGenService.getContractInfo();
 
 export const migrateLegacyAsset = (legacyTokenId, walletAddress) => 
-    zetaForgeService.migrateLegacyAsset(legacyTokenId, walletAddress);
+    zetaGenService.migrateLegacyAsset(legacyTokenId, walletAddress);

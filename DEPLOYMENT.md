@@ -1,8 +1,8 @@
-# 🚀 ZetaForge Universal App V2 - Deployment Guide
+# 🚀 ZetaGen Universal App V2 - Deployment Guide
 
 ## 📋 **Deployment Overview**
 
-This guide covers deploying ZetaForge Universal App V2 to production using:
+This guide covers deploying ZetaGen Universal App V2 to production using:
 - **Frontend**: Vercel (React + TypeScript + Vite)
 - **Backend**: Render (Node.js + Express + MongoDB)
 - **Smart Contracts**: Already deployed on ZetaChain Athens Testnet
@@ -12,7 +12,7 @@ This guide covers deploying ZetaForge Universal App V2 to production using:
 ## 🎯 **Frontend Deployment on Vercel**
 
 ### **Prerequisites:**
-- GitHub repository: https://github.com/VAIBHAV13S/zetaforge
+- GitHub repository: https://github.com/VAIBHAV13S/zetagen
 - Vercel account: https://vercel.com
 
 ### **Deployment Steps:**
@@ -21,7 +21,7 @@ This guide covers deploying ZetaForge Universal App V2 to production using:
    ```bash
    # Visit https://vercel.com/new
    # Select "Import Git Repository"
-   # Choose: VAIBHAV13S/zetaforge
+   # Choose: VAIBHAV13S/zetagen
    ```
 
 2. **Configure Build Settings:**
@@ -35,8 +35,8 @@ This guide covers deploying ZetaForge Universal App V2 to production using:
 
 3. **Environment Variables:**
    ```
-   VITE_API_BASE_URL=https://zetaforge-backend.onrender.com
-   VITE_APP_NAME=ZetaForge Universal App V2
+   VITE_API_BASE_URL=https://zetagen-backend.onrender.com
+   VITE_APP_NAME=ZetaGen Universal App V2
    VITE_ZETACHAIN_NETWORK=athens_7001
    VITE_UNIVERSAL_CONTRACT_V2=0xd306C9a30359EB053F23C92F754206d2fe0Ed93e
    VITE_UNIVERSAL_CONTRACT_LEGACY=0xDE1bE2A2bc97D2B42cDB61812d90214bB2778326
@@ -49,7 +49,7 @@ This guide covers deploying ZetaForge Universal App V2 to production using:
 4. **Deploy:**
    - Click "Deploy"
    - Vercel will automatically build and deploy
-   - Domain will be available at: `https://zetaforge-universal-app-v2.vercel.app`
+   - Domain will be available at: `https://zetagen-universal-app-v2.vercel.app`
 
 ---
 
@@ -65,13 +65,13 @@ This guide covers deploying ZetaForge Universal App V2 to production using:
    ```bash
    # Visit https://cloud.mongodb.com
    # Create new cluster (Free tier available)
-   # Name: zetaforge-production
+   # Name: zetagen-production
    # Region: Choose closest to your users
    ```
 
 2. **Get Connection String:**
    ```
-   mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/zetaforge?retryWrites=true&w=majority
+   mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/zetagen?retryWrites=true&w=majority
    ```
 
 ### **Render Deployment Steps:**
@@ -80,12 +80,12 @@ This guide covers deploying ZetaForge Universal App V2 to production using:
    ```bash
    # Visit https://dashboard.render.com
    # Click "New" → "Web Service"
-   # Connect GitHub repository: VAIBHAV13S/zetaforge
+   # Connect GitHub repository: VAIBHAV13S/zetagen
    ```
 
 2. **Configure Service:**
    ```
-   Name: zetaforge-backend
+   Name: zetagen-backend
    Environment: Node
    Region: Oregon (US West)
    Branch: main
@@ -98,15 +98,15 @@ This guide covers deploying ZetaForge Universal App V2 to production using:
    ```
    NODE_ENV=production
    PORT=10000
-   BASE_URL=https://zetaforge-backend.onrender.com
+   BASE_URL=https://zetagen-backend.onrender.com
    MONGODB_URI=<your-mongodb-atlas-connection-string>
    GEMINI_API_KEY=<your-gemini-api-key>
-   CORS_ORIGIN=https://zetaforge-universal-app-v2.vercel.app
-   FRONTEND_URL=https://zetaforge-universal-app-v2.vercel.app
+   CORS_ORIGIN=https://zetagen-universal-app-v2.vercel.app
+   FRONTEND_URL=https://zetagen-universal-app-v2.vercel.app
    ZETACHAIN_RPC_URL=https://zetachain-athens-evm.blockpi.network/v1/rpc/public
    ZETACHAIN_CHAIN_ID=7001
-   ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS=0xd306C9a30359EB053F23C92F754206d2fe0Ed93e
-   ZETAFORGE_LEGACY_CONTRACT_ADDRESS=0xDE1bE2A2bc97D2B42cDB61812d90214bB2778326
+   ZETAGEN_UNIVERSAL_CONTRACT_ADDRESS=0xd306C9a30359EB053F23C92F754206d2fe0Ed93e
+   ZETAGEN_LEGACY_CONTRACT_ADDRESS=0xDE1bE2A2bc97D2B42cDB61812d90214bB2778326
    UNIVERSAL_MODE_ENABLED=true
    CROSS_CHAIN_ENABLED=true
    RATE_LIMIT_WINDOW=900000
@@ -118,7 +118,7 @@ This guide covers deploying ZetaForge Universal App V2 to production using:
 
 4. **Deploy:**
    - Click "Create Web Service"
-   - Service will be available at: `https://zetaforge-backend.onrender.com`
+   - Service will be available at: `https://zetagen-backend.onrender.com`
 
 ---
 
@@ -127,7 +127,7 @@ This guide covers deploying ZetaForge Universal App V2 to production using:
 ### **Update Frontend API URL:**
 1. In Vercel dashboard, update environment variable:
    ```
-   VITE_API_BASE_URL=https://zetaforge-backend.onrender.com
+   VITE_API_BASE_URL=https://zetagen-backend.onrender.com
    ```
 
 2. Redeploy frontend to apply changes.
@@ -135,7 +135,7 @@ This guide covers deploying ZetaForge Universal App V2 to production using:
 ### **Update Backend CORS:**
 1. In Render dashboard, update environment variable:
    ```
-   CORS_ORIGIN=https://zetaforge-universal-app-v2.vercel.app
+   CORS_ORIGIN=https://zetagen-universal-app-v2.vercel.app
    ```
 
 ---
@@ -145,10 +145,10 @@ This guide covers deploying ZetaForge Universal App V2 to production using:
 ### **Health Checks:**
 ```bash
 # Backend Health Check
-curl https://zetaforge-backend.onrender.com/api/health
+curl https://zetagen-backend.onrender.com/api/health
 
 # Frontend Access
-curl https://zetaforge-universal-app-v2.vercel.app
+curl https://zetagen-universal-app-v2.vercel.app
 
 # API Connectivity Test
 curl https://zetaforge-universal-app-v2.vercel.app/api/universal/health
@@ -273,11 +273,11 @@ curl https://zetaforge-universal-app-v2.vercel.app/api/universal/health
 
 ## 🎯 **Production URLs**
 
-- **Frontend**: https://zetaforge-universal-app-v2.vercel.app
-- **Backend**: https://zetaforge-backend.onrender.com
-- **GitHub**: https://github.com/VAIBHAV13S/zetaforge
+- **Frontend**: https://zetagen-universal-app-v2.vercel.app
+- **Backend**: https://zetagen-backend.onrender.com
+- **GitHub**: https://github.com/VAIBHAV13S/zetagen
 - **Smart Contract V2**: 0xd306C9a30359EB053F23C92F754206d2fe0Ed93e
 
 ---
 
-*🚀 Your ZetaForge Universal App V2 is now ready for production deployment!*
+*🚀 Your ZetaGen Universal App V2 is now ready for production deployment!*

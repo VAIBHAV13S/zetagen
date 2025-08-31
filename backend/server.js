@@ -47,8 +47,8 @@ const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
     ? [
         process.env.FRONTEND_URL, 
-        'https://zetaforge-universal-app-v2.vercel.app',
-        'https://zetaforge.vercel.app',
+        'https://zetagen-universal-app-v2.vercel.app',
+        'https://zetagen.vercel.app',
         /\.vercel\.app$/,
         /\.render\.com$/
       ] 

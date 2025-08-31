@@ -1,7 +1,7 @@
 {
-  "name": "zeta-gen-backend",
+  "name": "zetagen-backend",
   "version": "1.0.0",
-  "description": "Backend API for Zeta-Gen: AI-Powered Universal Asset Generator",
+  "description": "Backend API for ZetaGen: AI-Powered Universal Asset Generator",
   "main": "server.js",
   "type": "module",
   "scripts": {
@@ -10,7 +10,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
-    "zeta-gen",
+    "zetagen",
     "ai",
     "nft",
     "zetachain",

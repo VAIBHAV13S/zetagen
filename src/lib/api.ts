@@ -1,5 +1,5 @@
 // Backend API endpoints
-let baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://zetaforge-backend.onrender.com/api';
+let baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://zetagen-backend.onrender.com/api';
 
 // Ensure the base URL always ends with /api
 if (!baseUrl.endsWith('/api')) {

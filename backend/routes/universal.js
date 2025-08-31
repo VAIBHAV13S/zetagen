@@ -1,10 +1,10 @@
 import express from 'express';
 import { ethers } from 'ethers';
-import EnhancedZetaForgeUniversalService from '../services/zetaForgeUniversalService.js';
+import EnhancedZetaGenUniversalService from '../services/zetaGenUniversalService.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 
 const router = express.Router();
-const universalService = new EnhancedZetaForgeUniversalService();
+const universalService = new EnhancedZetaGenUniversalService();
 
 /**
  * @route GET /api/universal/info
