@@ -18,8 +18,40 @@ import {
 import { SUPPORTED_CHAINS } from '@/lib/gateway';
 
 interface GatewayFeaturesProps {
-  asset: any;
-  onDeploymentComplete?: (universalAsset: any) => void;
+  asset: {
+    id: string;
+    prompt: string;
+    imageUrl: string;
+    metadata: {
+      name: string;
+      description: string;
+      createdAt: string;
+      transactionHash?: string;
+    };
+    owner: string;
+    isMinted: boolean;
+  };
+  onDeploymentComplete?: (universalAsset: {
+    id: string;
+    prompt: string;
+    imageUrl: string;
+    owner: string;
+    metadata: {
+      name: string;
+      description: string;
+      createdAt: string;
+      transactionHash?: string;
+    };
+    deployments: Array<{
+      chainId: number;
+      contractAddress: string;
+      tokenId: string;
+      txHash: string;
+      status: 'deploying' | 'deployed' | 'failed';
+      blockNumber?: number;
+    }>;
+    universalId: string;
+  }) => void;
 }
 
 const GatewayFeatures: React.FC<GatewayFeaturesProps> = ({
@@ -39,7 +71,12 @@ const GatewayFeatures: React.FC<GatewayFeaturesProps> = ({
 
   const { toast } = useToast();
   const [showQuote, setShowQuote] = useState(false);
-  const [quote, setQuote] = useState<any>(null);
+  const [quote, setQuote] = useState<{
+    estimatedGas: string;
+    estimatedTime: number;
+    fee: string;
+    exchangeRate: string;
+  } | null>(null);
   const [isGettingQuote, setIsGettingQuote] = useState(false);
 
   const handleChainToggle = (chainId: number) => {
@@ -107,10 +144,11 @@ const GatewayFeatures: React.FC<GatewayFeaturesProps> = ({
         description: `Asset deployed to ${universalAsset.deployments.length} chains`,
       });
       onDeploymentComplete?.(universalAsset);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to deploy asset';
       toast({
         title: "Deployment Failed",
-        description: error.message || "Failed to deploy asset",
+        description: errorMessage,
         variant: "destructive"
       });
     }
@@ -123,10 +161,11 @@ const GatewayFeatures: React.FC<GatewayFeaturesProps> = ({
         title: "Payment Processed!",
         description: `stZETA payment completed: ${payment.paymentId}`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to process payment';
       toast({
         title: "Payment Failed",
-        description: error.message || "Failed to process payment",
+        description: errorMessage,
         variant: "destructive"
       });
     }

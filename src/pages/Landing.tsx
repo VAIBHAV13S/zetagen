@@ -86,32 +86,35 @@ const Landing: React.FC = () => {
         title: "Wallet Connected!",
         description: `Connected to ${walletAddress?.slice(0, 6)}...${walletAddress?.slice(-4)}`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Wallet connection failed:', error);
       
-      const getErrorMessage = (error: any): string => {
-        if (error.message?.includes('MetaMask not found')) {
-          return "MetaMask extension not found. Please install MetaMask.";
+      const getErrorMessage = (error: unknown): string => {
+        if (error instanceof Error) {
+          if (error.message?.includes('MetaMask not found')) {
+            return "MetaMask extension not found. Please install MetaMask.";
+          }
+          if (error.message?.includes('User rejected')) {
+            return "Wallet connection was cancelled by user.";
+          }
+          if (error.message?.includes('No accounts found')) {
+            return "No accounts found. Please unlock MetaMask and try again.";
+          }
+          if (error.message?.includes('ZetaChain network')) {
+            return "Failed to switch to ZetaChain network. Please add it manually in MetaMask.";
+          }
+          if (error.message?.includes('Wallet connection already in progress')) {
+            return "Please wait for the current connection attempt to complete.";
+          }
+          if (error.message?.includes('MetaMask is busy')) {
+            return "MetaMask is currently busy. Please wait a moment and try again.";
+          }
+          if (error.message?.includes('Already processing')) {
+            return "MetaMask is processing another request. Please wait and try again.";
+          }
+          return error.message || "Failed to connect wallet. Please try again.";
         }
-        if (error.message?.includes('User rejected')) {
-          return "Wallet connection was cancelled by user.";
-        }
-        if (error.message?.includes('No accounts found')) {
-          return "No accounts found. Please unlock MetaMask and try again.";
-        }
-        if (error.message?.includes('ZetaChain network')) {
-          return "Failed to switch to ZetaChain network. Please add it manually in MetaMask.";
-        }
-        if (error.message?.includes('Wallet connection already in progress')) {
-          return "Please wait for the current connection attempt to complete.";
-        }
-        if (error.message?.includes('MetaMask is busy')) {
-          return "MetaMask is currently busy. Please wait a moment and try again.";
-        }
-        if (error.message?.includes('Already processing')) {
-          return "MetaMask is processing another request. Please wait and try again.";
-        }
-        return error.message || "Failed to connect wallet. Please try again.";
+        return "Failed to connect wallet. Please try again.";
       };
       
       const errorMessage = getErrorMessage(error);

@@ -108,10 +108,11 @@ const Generator: React.FC = () => {
         title: "Asset generated!",
         description: "Your AI-powered asset has been created successfully",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to generate asset";
       toast({
         title: "Generation Failed",
-        description: error.message || "Failed to generate asset",
+        description: errorMessage,
         variant: "destructive"
       });
     }
@@ -134,10 +135,11 @@ const Generator: React.FC = () => {
         title: "NFT Minted!",
         description: `Your asset has been minted as an NFT on chain ${selectedSourceChain}`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to mint asset";
       toast({
         title: "Minting Failed",
-        description: error.message || "Failed to mint asset",
+        description: errorMessage,
         variant: "destructive"
       });
     }
@@ -155,31 +157,33 @@ const Generator: React.FC = () => {
         title: "Wallet Connected!",
         description: `Connected to ${walletAddress?.slice(0, 6)}...${walletAddress?.slice(-4)}`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Wallet connection failed:', error);
       
       let errorMessage = "Failed to connect wallet. Please try again.";
       let shouldRetry = false;
       
-      if (error.message.includes('MetaMask not found')) {
-        errorMessage = "MetaMask extension not found. Please install MetaMask.";
-      } else if (error.message.includes('User rejected')) {
-        errorMessage = "Wallet connection was cancelled by user.";
-      } else if (error.message.includes('No accounts found')) {
-        errorMessage = "No accounts found. Please unlock MetaMask and try again.";
-      } else if (error.message.includes('ZetaChain network')) {
-        errorMessage = "Failed to switch to ZetaChain network. Please add it manually in MetaMask.";
-      } else if (error.message.includes('Wallet connection already in progress')) {
-        errorMessage = "Please wait for the current connection attempt to complete.";
-        shouldRetry = true;
-      } else if (error.message.includes('MetaMask is busy')) {
-        errorMessage = "MetaMask is currently busy. Please wait a moment and try again.";
-        shouldRetry = true;
-      } else if (error.message.includes('Already processing')) {
-        errorMessage = "MetaMask is processing another request. Please wait and try again.";
-        shouldRetry = true;
-      } else if (error.message) {
-        errorMessage = error.message;
+      if (error instanceof Error) {
+        if (error.message.includes('MetaMask not found')) {
+          errorMessage = "MetaMask extension not found. Please install MetaMask.";
+        } else if (error.message.includes('User rejected')) {
+          errorMessage = "Wallet connection was cancelled by user.";
+        } else if (error.message.includes('No accounts found')) {
+          errorMessage = "No accounts found. Please unlock MetaMask and try again.";
+        } else if (error.message.includes('ZetaChain network')) {
+          errorMessage = "Failed to switch to ZetaChain network. Please add it manually in MetaMask.";
+        } else if (error.message.includes('Wallet connection already in progress')) {
+          errorMessage = "Please wait for the current connection attempt to complete.";
+          shouldRetry = true;
+        } else if (error.message.includes('MetaMask is busy')) {
+          errorMessage = "MetaMask is currently busy. Please wait a moment and try again.";
+          shouldRetry = true;
+        } else if (error.message.includes('Already processing')) {
+          errorMessage = "MetaMask is processing another request. Please wait and try again.";
+          shouldRetry = true;
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
       }
       
       toast({
