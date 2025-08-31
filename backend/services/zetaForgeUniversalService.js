@@ -514,6 +514,133 @@ class EnhancedZetaForgeUniversalService {
     }
 
     /**
+     * Enhanced cross-chain mint asset with ZetaChain relayer integration
+     */
+    async crossChainMintAsset(walletAddress, sourceChain, assetId, prompt, metadataURI, traits) {
+        // Check if service is available
+        if (!this.universalContract) {
+            throw new Error('Universal contract is not initialized. Please check your environment variables (ZETACHAIN_RPC_URL, ZETACHAIN_PRIVATE_KEY, ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS).');
+        }
+
+        const startTime = Date.now();
+
+        try {
+            console.log(`🌐 Cross-chain mint for asset ${assetId} from chain ${sourceChain}`);
+
+            // Enhanced pre-checks
+            await this.validateMintParameters(walletAddress, assetId, prompt, metadataURI, sourceChain);
+
+            // Check asset status
+            const alreadyMinted = await this.universalContract.isAssetMinted(assetId);
+            if (alreadyMinted) {
+                throw new Error('Asset already minted');
+            }
+
+            // Fetch metadata from URI to construct the struct
+            let metadataResponse;
+            try {
+                metadataResponse = await fetch(metadataURI);
+                if (!metadataResponse.ok) {
+                    throw new Error(`Failed to fetch metadata: ${metadataResponse.status}`);
+                }
+                const metadataJson = await metadataResponse.json();
+
+                // Construct AssetMetadata struct
+                const assetMetadata = {
+                    assetId,
+                    name: metadataJson.name || 'ZetaForge AI Generated',
+                    description: metadataJson.description || prompt,
+                    imageUrl: metadataJson.image || '',
+                    traitTypes: metadataJson.attributes ? metadataJson.attributes.map(attr => attr.trait_type || '') : [],
+                    traitValues: metadataJson.attributes ? metadataJson.attributes.map(attr => attr.value || '') : [],
+                    timestamp: Math.floor(Date.now() / 1000),
+                    sourceChain,
+                    originalMinter: walletAddress
+                };
+
+                // Get optimized transaction parameters
+                const { fee, gasEstimate, gasPrice } = await this.getOptimizedTransactionParams(
+                    walletAddress, sourceChain, assetId, prompt, metadataURI, traits
+                );
+
+                console.log(`💰 Cross-chain mint fee: ${ethers.formatEther(fee)} ZETA, Gas: ${gasEstimate.toString()}`);
+
+                // Use contract interface to encode the cross-chain mint function call
+                const iface = this.universalContract.interface;
+                const functionData = iface.encodeFunctionData('crossChainMint', [
+                    sourceChain,
+                    assetId,
+                    prompt,
+                    metadataURI,
+                    traits || '',
+                    assetMetadata
+                ]);
+
+                // Estimate gas using the encoded data
+                const gasEstimateFinal = await this.provider.estimateGas({
+                    to: process.env.ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS,
+                    data: functionData,
+                    value: fee,
+                    from: this.wallet.address
+                });
+
+                // Apply gas multiplier but cap at max limit
+                const bufferedGas = gasEstimateFinal * BigInt(Math.floor(this.config.gasMultiplier * 100)) / BigInt(100);
+                const finalGasLimit = bufferedGas > BigInt(this.config.maxGasLimit)
+                    ? BigInt(this.config.maxGasLimit)
+                    : bufferedGas;
+
+                // Send cross-chain transaction
+                const tx = await this.wallet.sendTransaction({
+                    to: process.env.ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS,
+                    data: functionData,
+                    value: fee,
+                    gasLimit: finalGasLimit,
+                    gasPrice: gasPrice
+                });
+
+                console.log(`📄 Cross-chain transaction submitted: ${tx.hash}`);
+
+                // Wait for confirmation with timeout
+                const receipt = await this.waitForTransaction(tx.hash, 120000); // 2 minute timeout for cross-chain
+                console.log(`✅ Cross-chain transaction confirmed in block ${receipt.blockNumber}`);
+
+                // Get minted token ID
+                const tokenId = await this.universalContract.getTokenIdByAssetId(assetId);
+
+                // Update metrics
+                this.updateMetrics(true, Date.now() - startTime);
+
+                return {
+                    success: true,
+                    hash: receipt.transactionHash,
+                    transactionHash: receipt.transactionHash,
+                    blockNumber: receipt.blockNumber,
+                    tokenId: tokenId.toString(),
+                    assetId,
+                    sourceChain,
+                    fee: ethers.formatEther(fee),
+                    gasUsed: receipt.gasUsed.toString(),
+                    gasPrice: ethers.formatUnits(receipt.gasPrice || gasPrice, 'gwei'),
+                    transactionTime: Date.now() - startTime,
+                    contract: 'universal',
+                    mintFee: ethers.formatEther(fee),
+                    crossChain: true,
+                    relayerUsed: true
+                };
+
+            } catch (fetchError) {
+                throw new Error(`Failed to fetch or parse metadata: ${fetchError.message}`);
+            }
+
+        } catch (error) {
+            console.error(`❌ Cross-chain mint failed:`, error.message);
+            this.updateMetrics(false, Date.now() - startTime);
+            throw new Error(`Cross-chain mint failed: ${error.message}`);
+        }
+    }
+
+    /**
      * Enhanced batch minting with progress tracking
      */
     async batchMintAssets(mintRequests, batchSize = 5) {
@@ -852,7 +979,6 @@ class EnhancedZetaForgeUniversalService {
             // Preferred: direct estimate helper
             if (this.universalContract.estimateGas && typeof this.universalContract.estimateGas.crossChainMint === 'function') {
                 gasEstimate = await this.universalContract.estimateGas.crossChainMint(
-                    walletAddress,
                     sourceChain,
                     assetId,
                     prompt,
@@ -864,7 +990,6 @@ class EnhancedZetaForgeUniversalService {
             // Fallback: indexed access (some builds expose signatures)
             } else if (this.universalContract.estimateGas && this.universalContract.estimateGas['crossChainMint']) {
                 gasEstimate = await this.universalContract.estimateGas['crossChainMint'](
-                    walletAddress,
                     sourceChain,
                     assetId,
                     prompt,
@@ -876,7 +1001,6 @@ class EnhancedZetaForgeUniversalService {
             // Fallback: populate transaction and ask provider to estimate
             } else if (this.universalContract.populateTransaction && typeof this.universalContract.populateTransaction.crossChainMint === 'function') {
                 const txRequest = await this.universalContract.populateTransaction.crossChainMint(
-                    walletAddress,
                     sourceChain,
                     assetId,
                     prompt,
