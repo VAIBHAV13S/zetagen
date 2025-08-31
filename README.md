@@ -1,8 +1,12 @@
-# ZetaForge AI - Universal NFT Generator with Gateway API Integration
+# ZetaGen - Universal NFT Generator with Gateway API Integration
 
-![ZetaForge Logo](public/logo.svg)
+![ZetaGen Logo](public/logo.svg)
 
-A revolutionary AI-powered NFT generation platform built on ZetaChain's Universal Apps framework, featuring advanced Gateway API integration for seamless cross-chain operations, stZETA payments, and universal asset bridging.
+A revolutionary AI-powered NFT generation platform built on ZetaChain's Universal Apps framework, featuring advanced Gateway API integration for seamless cross-chain operations, stZETA payments, ## 📞 Support
+
+- **Discord**: [Join our community](https://discord.gg/zetagen)
+- **Documentation**: [Full API docs](https://docs.zetagen.ai)
+- **Issues**: [GitHub Issues](https://github.com/your-username/zetagen/issues)niversal asset bridging.
 
 ## 🌟 Key Features
 
@@ -19,7 +23,7 @@ A revolutionary AI-powered NFT generation platform built on ZetaChain's Universa
 
 ### 🔗 Cross-Chain Capabilities
 - **Universal App V2**: Built on ZetaChain's latest Universal Apps framework
-- **Legacy Integration**: Backward compatibility with existing ZetaForge contracts
+- **Legacy Integration**: Backward compatibility with existing ZetaGen contracts
 - **Multi-Chain Minting**: Deploy NFTs across multiple chains simultaneously
 
 ### 💰 Monetization Features
@@ -61,8 +65,8 @@ A revolutionary AI-powered NFT generation platform built on ZetaChain's Universa
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/your-username/zeta-forge-ai.git
-   cd zeta-forge-ai
+   git clone https://github.com/your-username/zetagen.git
+   cd zetagen
    ```
 
 2. **Install dependencies**
@@ -135,7 +139,7 @@ VITE_SUPPORTED_CHAINS=1,56,137,43114,7001
 #### Backend (.env)
 ```env
 PORT=5000
-MONGODB_URI=mongodb://localhost:27017/zetaforge
+MONGODB_URI=mongodb://localhost:27017/zetagen
 GEMINI_API_KEY=your_gemini_api_key
 JWT_SECRET=your_jwt_secret
 ZETACHAIN_PRIVATE_KEY=your_private_key
@@ -268,8 +272,8 @@ npm run preview
 
 ### Docker Deployment
 ```bash
-docker build -t zetaforge-ai .
-docker run -p 8080:8080 zetaforge-ai
+docker build -t zetagen .
+docker run -p 8080:8080 zetagen
 ```
 
 ## 🤝 Contributing
@@ -301,7 +305,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Discord**: [Join our community](https://discord.gg/zetaforge)
 - **Documentation**: [Full API docs](https://docs.zetaforge.ai)
-- **Issues**: [GitHub Issues](https://github.com/your-username/zeta-forge-ai/issues)
+- **Issues**: [GitHub Issues](https://github.com/your-username/zetagen/issues)
 
 ## 🏆 Hackathon Features
 
