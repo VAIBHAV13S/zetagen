@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { callEdgeFunction, API_ENDPOINTS } from '@/lib/api';
-import { checkWalletConnection, watchAccountChanges, watchChainChanges } from '@/lib/wallet';
+import { checkWalletConnection, watchAccountChanges, watchChainChanges, connectWallet } from '@/lib/wallet';
 
 export interface Asset {
   id: string;
@@ -20,9 +20,11 @@ interface AppState {
   // Wallet connection
   isWalletConnected: boolean;
   walletAddress: string | null;
+  isConnectingWallet: boolean; // Add connection state
   connectWallet: (address: string) => void;
   disconnectWallet: () => void;
   initializeWallet: () => Promise<void>;
+  connectWalletAsync: () => Promise<void>; // Add centralized connection function
 
   // Assets
   assets: Asset[];
@@ -30,11 +32,15 @@ interface AppState {
   isGenerating: boolean;
   isMinting: boolean;
 
+  // Cross-chain configuration
+  selectedSourceChain: number;
+  setSelectedSourceChain: (chainId: number) => void;
+
   // Actions
   setCurrentAsset: (asset: Asset | null) => void;
   addAsset: (asset: Asset) => void;
   generateAsset: (prompt: string) => Promise<{ success: boolean; asset: Asset }>;
-  mintAsset: (assetId: string) => Promise<void>;
+  mintAsset: (assetId: string, sourceChain?: number) => Promise<void>;
   fetchAssets: (owner?: string) => Promise<void>;
   
   // UI state
@@ -50,12 +56,14 @@ export const useStore = create<AppState>((set, get) => ({
   // Initial state
   isWalletConnected: false,
   walletAddress: null,
+  isConnectingWallet: false,
   assets: [],
   currentAsset: null,
   isGenerating: false,
   isMinting: false,
   currentPage: 'landing',
   galleryFilter: 'all',
+  selectedSourceChain: 7001, // Default to ZetaChain Testnet
 
   // Wallet actions
   connectWallet: (address) => {
@@ -73,6 +81,12 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   initializeWallet: async () => {
+    // Prevent multiple initializations
+    if (get().isWalletConnected !== undefined) {
+      console.log('🔄 Wallet already initialized');
+      return;
+    }
+
     try {
       // Check if wallet was previously connected
       const storedAddress = localStorage.getItem('walletAddress');
@@ -100,7 +114,9 @@ export const useStore = create<AppState>((set, get) => ({
           // User switched accounts
           const newAddress = accounts[0];
           if (newAddress !== get().walletAddress) {
-            get().connectWallet(newAddress);
+            // Update the wallet address without triggering a new connection
+            set({ walletAddress: newAddress });
+            localStorage.setItem('walletAddress', newAddress);
           }
         }
       });
@@ -115,9 +131,67 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
+  // Centralized wallet connection function
+  connectWalletAsync: async () => {
+    const { isConnectingWallet, isWalletConnected, walletAddress } = get();
+    
+    // If already connected, don't attempt to connect again
+    if (isWalletConnected && walletAddress) {
+      console.log('✅ Wallet already connected');
+      return;
+    }
+
+    // Prevent multiple simultaneous connection attempts
+    if (isConnectingWallet) {
+      console.log('🔄 Wallet connection already in progress...');
+      return;
+    }
+
+    set({ isConnectingWallet: true });
+    
+    try {
+      console.log('🔌 Connecting wallet from store...');
+      
+      const address = await connectWallet();
+      set({ 
+        isWalletConnected: true, 
+        walletAddress: address,
+        isConnectingWallet: false 
+      });
+      
+      // Store in localStorage for persistence
+      localStorage.setItem('walletAddress', address);
+      localStorage.setItem('isWalletConnected', 'true');
+      
+      console.log('✅ Wallet connected successfully:', address);
+    } catch (error: any) {
+      console.error('❌ Wallet connection failed:', error);
+      
+      // Handle specific MetaMask errors
+      if (error.code === -32002) {
+        console.log('⚠️ MetaMask is already processing a request. Please wait and try again.');
+        // For this specific error, don't reset the connecting state immediately
+        // Give user time to try again
+        setTimeout(() => {
+          set({ isConnectingWallet: false });
+        }, 2000);
+      } else if (error.message?.includes('MetaMask is busy')) {
+        console.log('⚠️ MetaMask is busy, user should wait and retry');
+        setTimeout(() => {
+          set({ isConnectingWallet: false });
+        }, 3000);
+      } else {
+        set({ isConnectingWallet: false });
+      }
+      
+      throw error;
+    }
+  },
+
   // Asset actions
   setCurrentAsset: (asset) => set({ currentAsset: asset }),
   addAsset: (asset) => set((state) => ({ assets: [asset, ...state.assets] })),
+  setSelectedSourceChain: (chainId) => set({ selectedSourceChain: chainId }),
 
   generateAsset: async (prompt) => {
     set({ isGenerating: true });
@@ -178,7 +252,7 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
-  mintAsset: async (assetId) => {
+  mintAsset: async (assetId, sourceChain) => {
     set({ isMinting: true });
     
     try {
@@ -187,9 +261,13 @@ export const useStore = create<AppState>((set, get) => ({
         throw new Error('Wallet not connected');
       }
 
+      // Use provided sourceChain or default to selectedSourceChain
+      const chainToUse = sourceChain || get().selectedSourceChain;
+
       const response = await callEdgeFunction(API_ENDPOINTS.mintAsset, {
         assetId,
-        walletAddress
+        walletAddress,
+        sourceChain: chainToUse
       });
 
       if (response.success) {

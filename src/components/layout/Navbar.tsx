@@ -3,15 +3,20 @@ import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useStore } from '@/store/useStore';
 import { useToast } from '@/hooks/use-toast';
-import { connectWallet, isMetaMaskInstalled } from '@/lib/wallet';
+import { isMetaMaskInstalled } from '@/lib/wallet';
 import { Zap, Wallet, LogOut } from 'lucide-react';
 
 const Navbar = () => {
   const location = useLocation();
-  const { isWalletConnected, walletAddress, connectWallet: setWalletConnected, disconnectWallet } = useStore();
+  const { isWalletConnected, walletAddress, connectWalletAsync, isConnectingWallet, disconnectWallet } = useStore();
   const { toast } = useToast();
 
   const handleConnectWallet = async () => {
+    if (isConnectingWallet) {
+      console.log('🔄 Connection already in progress, ignoring click');
+      return;
+    }
+    
     try {
       // Check if MetaMask is installed
       if (!isMetaMaskInstalled()) {
@@ -23,16 +28,16 @@ const Navbar = () => {
         return;
       }
 
-      const address = await connectWallet();
-      setWalletConnected(address);
+      await connectWalletAsync();
       toast({
         title: "Wallet Connected!",
-        description: `Connected to ${address.slice(0, 6)}...${address.slice(-4)}`,
+        description: `Connected to ${walletAddress?.slice(0, 6)}...${walletAddress?.slice(-4)}`,
       });
     } catch (error: any) {
       console.error('Wallet connection failed:', error);
       
       let errorMessage = "Failed to connect wallet. Please try again.";
+      let shouldRetry = false;
       
       if (error.message.includes('MetaMask not found')) {
         errorMessage = "MetaMask extension not found. Please install MetaMask.";
@@ -42,6 +47,15 @@ const Navbar = () => {
         errorMessage = "No accounts found. Please unlock MetaMask and try again.";
       } else if (error.message.includes('ZetaChain network')) {
         errorMessage = "Failed to switch to ZetaChain network. Please add it manually in MetaMask.";
+      } else if (error.message.includes('Wallet connection already in progress')) {
+        errorMessage = "Please wait for the current connection attempt to complete.";
+        shouldRetry = true;
+      } else if (error.message.includes('MetaMask is busy')) {
+        errorMessage = "MetaMask is currently busy. Please wait a moment and try again.";
+        shouldRetry = true;
+      } else if (error.message.includes('Already processing')) {
+        errorMessage = "MetaMask is processing another request. Please wait and try again.";
+        shouldRetry = true;
       } else if (error.message) {
         errorMessage = error.message;
       }
@@ -51,6 +65,22 @@ const Navbar = () => {
         description: errorMessage,
         variant: "destructive"
       });
+
+      // Auto-retry for certain errors after a delay
+      if (shouldRetry) {
+        setTimeout(async () => {
+          try {
+            console.log('🔄 Auto-retrying wallet connection...');
+            await connectWalletAsync();
+            toast({
+              title: "Wallet Connected!",
+              description: `Connected to ${walletAddress?.slice(0, 6)}...${walletAddress?.slice(-4)}`,
+            });
+          } catch (retryError) {
+            console.error('Auto-retry failed:', retryError);
+          }
+        }, 3000);
+      }
     }
   };
 
@@ -113,10 +143,20 @@ const Navbar = () => {
             ) : (
               <Button
                 onClick={handleConnectWallet}
+                disabled={isConnectingWallet}
                 className="bg-gradient-primary hover:shadow-glow-primary transition-all duration-300"
               >
-                <Wallet className="h-4 w-4 mr-2" />
-                Connect Wallet
+                {isConnectingWallet ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Connecting...
+                  </>
+                ) : (
+                  <>
+                    <Wallet className="h-4 w-4 mr-2" />
+                    Connect Wallet
+                  </>
+                )}
               </Button>
             )}
           </div>

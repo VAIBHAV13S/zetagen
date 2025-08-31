@@ -123,6 +123,10 @@ export async function switchToZetaChain() {
   }
 }
 
+// Global flag to prevent multiple simultaneous connection attempts
+let isConnecting = false;
+let connectionPromise: Promise<string> | null = null;
+
 export async function connectWallet() {
   console.log('🔌 Connecting wallet...');
   
@@ -130,36 +134,89 @@ export async function connectWallet() {
     throw new Error('MetaMask not found. Please install MetaMask extension.');
   }
 
-  try {
-    // Check if already connected
-    const existingAccount = await checkWalletConnection();
-    if (existingAccount) {
-      console.log('✅ Wallet already connected:', existingAccount);
-      return existingAccount;
-    }
-
-    // Switch to ZetaChain first
-    await switchToZetaChain();
-    
-    console.log('👛 Requesting accounts...');
-    
-    // Then request accounts
-    const accounts = await window.ethereum.request({ 
-      method: 'eth_requestAccounts' 
-    });
-    
-    console.log('📋 Received accounts:', accounts);
-    
-    if (accounts.length === 0) {
-      throw new Error('No accounts found. Please unlock MetaMask and try again.');
-    }
-    
-    console.log('✅ Wallet connected successfully:', accounts[0]);
-    return accounts[0];
-  } catch (error) {
-    console.error('❌ Wallet connection error:', error);
-    throw error;
+  // If already connecting, return the existing promise
+  if (isConnecting && connectionPromise) {
+    console.log('🔄 Connection already in progress, returning existing promise...');
+    return connectionPromise;
   }
+
+  // Prevent multiple simultaneous connection attempts
+  if (isConnecting) {
+    console.log('🔄 Connection already in progress, waiting...');
+    // Wait longer for MetaMask to finish processing
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    if (isConnecting) {
+      throw new Error('Wallet connection already in progress. Please wait.');
+    }
+  }
+
+  isConnecting = true;
+  connectionPromise = (async () => {
+    try {
+      // Add a longer delay to prevent rapid successive calls
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Check if already connected
+      const existingAccount = await checkWalletConnection();
+      if (existingAccount) {
+        console.log('✅ Wallet already connected:', existingAccount);
+        return existingAccount;
+      }
+
+      // Switch to ZetaChain first
+      await switchToZetaChain();
+      
+      console.log('👛 Requesting accounts...');
+      
+      // Add another delay before requesting accounts
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Then request accounts
+      const accounts = await window.ethereum.request({ 
+        method: 'eth_requestAccounts' 
+      });
+      
+      console.log('📋 Received accounts:', accounts);
+      
+      if (accounts.length === 0) {
+        throw new Error('No accounts found. Please unlock MetaMask and try again.');
+      }
+      
+      console.log('✅ Wallet connected successfully:', accounts[0]);
+      return accounts[0];
+    } catch (error: any) {
+      // Special handling for MetaMask "already processing" error
+      if (error.code === -32002) {
+        console.log('⚠️ MetaMask is already processing, waiting and retrying...');
+        // Wait for MetaMask to finish processing
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        try {
+          // Try one more time
+          const accounts = await window.ethereum.request({ 
+            method: 'eth_requestAccounts' 
+          });
+          
+          if (accounts.length === 0) {
+            throw new Error('No accounts found. Please unlock MetaMask and try again.');
+          }
+          
+          console.log('✅ Wallet connected successfully after retry:', accounts[0]);
+          return accounts[0];
+        } catch (retryError) {
+          console.error('❌ Retry also failed:', retryError);
+          throw new Error('MetaMask is busy. Please wait a moment and try again.');
+        }
+      }
+      
+      throw error;
+    } finally {
+      isConnecting = false;
+      connectionPromise = null;
+    }
+  })();
+
+  return connectionPromise;
 }
 
 export function watchAccountChanges(callback: (accounts: string[]) => void) {

@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import { useStore } from '@/store/useStore';
 import { useToast } from '@/hooks/use-toast';
 import { useSEO, seoConfigs } from '@/hooks/useSEO';
-import { connectWallet, isMetaMaskInstalled } from '@/lib/wallet';
+import { isMetaMaskInstalled } from '@/lib/wallet';
 import { WalletStatus } from '@/components/ui/wallet-status';
 import { WalletDebug } from '@/components/ui/wallet-debug';
 import { ArrowRight, Sparkles, Zap, Shield, Globe } from 'lucide-react';
@@ -41,7 +41,7 @@ const staggerContainer = {
 
 const Landing: React.FC = () => {
   const navigate = useNavigate();
-  const { isWalletConnected, walletAddress, connectWallet: setWalletConnected } = useStore();
+  const { isWalletConnected, walletAddress, connectWallet: setWalletConnected, connectWalletAsync, isConnectingWallet } = useStore();
   const { toast } = useToast();
 
   useSEO(seoConfigs.home);
@@ -65,6 +65,11 @@ const Landing: React.FC = () => {
   ], []);
 
   const handleConnectWallet = useCallback(async () => {
+    if (isConnectingWallet) {
+      console.log('🔄 Connection already in progress, ignoring click');
+      return;
+    }
+    
     try {
       if (!isMetaMaskInstalled()) {
         toast({
@@ -75,12 +80,11 @@ const Landing: React.FC = () => {
         return;
       }
 
-      const address = await connectWallet();
-      setWalletConnected(address);
+      await connectWalletAsync();
       
       toast({
         title: "Wallet Connected!",
-        description: `Connected to ${address.slice(0, 6)}...${address.slice(-4)}`,
+        description: `Connected to ${walletAddress?.slice(0, 6)}...${walletAddress?.slice(-4)}`,
       });
     } catch (error: any) {
       console.error('Wallet connection failed:', error);
@@ -98,16 +102,44 @@ const Landing: React.FC = () => {
         if (error.message?.includes('ZetaChain network')) {
           return "Failed to switch to ZetaChain network. Please add it manually in MetaMask.";
         }
+        if (error.message?.includes('Wallet connection already in progress')) {
+          return "Please wait for the current connection attempt to complete.";
+        }
+        if (error.message?.includes('MetaMask is busy')) {
+          return "MetaMask is currently busy. Please wait a moment and try again.";
+        }
+        if (error.message?.includes('Already processing')) {
+          return "MetaMask is processing another request. Please wait and try again.";
+        }
         return error.message || "Failed to connect wallet. Please try again.";
       };
       
+      const errorMessage = getErrorMessage(error);
+      const shouldRetry = errorMessage.includes('busy') || errorMessage.includes('processing') || errorMessage.includes('in progress');
+      
       toast({
         title: "Connection Failed",
-        description: getErrorMessage(error),
+        description: errorMessage,
         variant: "destructive"
       });
+
+      // Auto-retry for certain errors after a delay
+      if (shouldRetry) {
+        setTimeout(async () => {
+          try {
+            console.log('🔄 Auto-retrying wallet connection from Landing...');
+            await connectWalletAsync();
+            toast({
+              title: "Wallet Connected!",
+              description: `Connected to ${walletAddress?.slice(0, 6)}...${walletAddress?.slice(-4)}`,
+            });
+          } catch (retryError) {
+            console.error('Auto-retry failed:', retryError);
+          }
+        }, 3000);
+      }
     }
-  }, [toast, setWalletConnected]);
+  }, [toast, connectWalletAsync, walletAddress, isConnectingWallet]);
 
   const handleNavigation = useCallback((path: string) => {
     navigate(path);

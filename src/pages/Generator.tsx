@@ -4,11 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useStore } from '@/store/useStore';
 import { useToast } from '@/hooks/use-toast';
 import { useSEO, seoConfigs } from '@/hooks/useSEO';
-import { connectWallet, watchAccountChanges, watchChainChanges } from '@/lib/wallet';
-import { Sparkles, Loader2, Download, Share, Coins, ArrowLeft } from 'lucide-react';
+
+import { Sparkles, Loader2, Download, Share, Coins, ArrowLeft, Wallet } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 const Generator: React.FC = () => {
@@ -27,10 +28,15 @@ const Generator: React.FC = () => {
     isGenerating, 
     isMinting, 
     isWalletConnected, 
+    walletAddress,
+    connectWalletAsync,
+    isConnectingWallet,
     generateAsset, 
     mintAsset,
     connectWallet: setWalletConnected,
-    disconnectWallet
+    disconnectWallet,
+    selectedSourceChain,
+    setSelectedSourceChain
   } = useStore();
   
   const { toast } = useToast();
@@ -62,8 +68,11 @@ const Generator: React.FC = () => {
       }
     };
 
-    watchAccountChanges(handleAccountsChanged);
-    watchChainChanges(handleChainChanged);
+    // Only add listeners if MetaMask is available
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
+      window.ethereum.on('chainChanged', handleChainChanged);
+    }
 
     return () => {
       if (window.ethereum) {
@@ -111,7 +120,7 @@ const Generator: React.FC = () => {
     if (!currentAsset) return;
 
     try {
-      await mintAsset(currentAsset.id);
+      await mintAsset(currentAsset.id, selectedSourceChain);
       
       confetti({
         particleCount: 100,
@@ -122,7 +131,7 @@ const Generator: React.FC = () => {
 
       toast({
         title: "NFT Minted!",
-        description: "Your asset has been minted as an NFT successfully",
+        description: `Your asset has been minted as an NFT on chain ${selectedSourceChain}`,
       });
     } catch (error: any) {
       toast({
@@ -131,25 +140,70 @@ const Generator: React.FC = () => {
         variant: "destructive"
       });
     }
-  }, [currentAsset, mintAsset, toast]);
+  }, [currentAsset, mintAsset, selectedSourceChain, toast]);
 
   const handleConnectWallet = useCallback(async () => {
+    if (isConnectingWallet) {
+      console.log('🔄 Connection already in progress, ignoring click');
+      return;
+    }
+    
     try {
-      const address = await connectWallet();
-      setWalletConnected(address);
+      await connectWalletAsync();
       toast({
         title: "Wallet Connected!",
-        description: `Connected to ${address.slice(0, 6)}...${address.slice(-4)}`,
+        description: `Connected to ${walletAddress?.slice(0, 6)}...${walletAddress?.slice(-4)}`,
       });
     } catch (error: any) {
       console.error('Wallet connection failed:', error);
+      
+      let errorMessage = "Failed to connect wallet. Please try again.";
+      let shouldRetry = false;
+      
+      if (error.message.includes('MetaMask not found')) {
+        errorMessage = "MetaMask extension not found. Please install MetaMask.";
+      } else if (error.message.includes('User rejected')) {
+        errorMessage = "Wallet connection was cancelled by user.";
+      } else if (error.message.includes('No accounts found')) {
+        errorMessage = "No accounts found. Please unlock MetaMask and try again.";
+      } else if (error.message.includes('ZetaChain network')) {
+        errorMessage = "Failed to switch to ZetaChain network. Please add it manually in MetaMask.";
+      } else if (error.message.includes('Wallet connection already in progress')) {
+        errorMessage = "Please wait for the current connection attempt to complete.";
+        shouldRetry = true;
+      } else if (error.message.includes('MetaMask is busy')) {
+        errorMessage = "MetaMask is currently busy. Please wait a moment and try again.";
+        shouldRetry = true;
+      } else if (error.message.includes('Already processing')) {
+        errorMessage = "MetaMask is processing another request. Please wait and try again.";
+        shouldRetry = true;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Connection failed",
-        description: error.message || "Failed to connect wallet. Please try again.",
+        description: errorMessage,
         variant: "destructive"
       });
+
+      // Auto-retry for certain errors after a delay
+      if (shouldRetry) {
+        setTimeout(async () => {
+          try {
+            console.log('🔄 Auto-retrying wallet connection from Generator...');
+            await connectWalletAsync();
+            toast({
+              title: "Wallet Connected!",
+              description: `Connected to ${walletAddress?.slice(0, 6)}...${walletAddress?.slice(-4)}`,
+            });
+          } catch (retryError) {
+            console.error('Auto-retry failed:', retryError);
+          }
+        }, 3000);
+      }
     }
-  }, [setWalletConnected, toast]);
+  }, [connectWalletAsync, walletAddress, toast, isConnectingWallet]);
 
   const handleDownload = useCallback(async () => {
     if (!currentAsset?.imageUrl) {
@@ -355,9 +409,20 @@ const Generator: React.FC = () => {
                   ) : (
                     <Button
                       onClick={handleConnectWallet}
+                      disabled={isConnectingWallet}
                       className="w-full bg-gradient-secondary hover:shadow-glow-secondary transition-all duration-300 py-6 text-lg"
                     >
-                      Connect Wallet to Generate
+                      {isConnectingWallet ? (
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                          Connecting Wallet...
+                        </>
+                      ) : (
+                        <>
+                          <Wallet className="mr-2 h-5 w-5" />
+                          Connect Wallet to Generate
+                        </>
+                      )}
                     </Button>
                   )}
                 </div>
@@ -437,7 +502,57 @@ const Generator: React.FC = () => {
                           </Button>
                         </div>
 
-                        {/* Mint Button */}
+                        {/* Chain Selector */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-muted-foreground">
+                          Select Source Chain
+                        </label>
+                        <Select
+                          value={selectedSourceChain.toString()}
+                          onValueChange={(value) => setSelectedSourceChain(parseInt(value))}
+                        >
+                          <SelectTrigger className="glass border-primary/30">
+                            <SelectValue placeholder="Choose a chain" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">
+                              <div className="flex items-center space-x-2">
+                                <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
+                                <span>Ethereum</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="56">
+                              <div className="flex items-center space-x-2">
+                                <div className="w-4 h-4 bg-yellow-500 rounded-full"></div>
+                                <span>BSC</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="137">
+                              <div className="flex items-center space-x-2">
+                                <div className="w-4 h-4 bg-purple-500 rounded-full"></div>
+                                <span>Polygon</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="43114">
+                              <div className="flex items-center space-x-2">
+                                <div className="w-4 h-4 bg-red-500 rounded-full"></div>
+                                <span>Avalanche</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="7001">
+                              <div className="flex items-center space-x-2">
+                                <div className="w-4 h-4 bg-green-500 rounded-full"></div>
+                                <span>ZetaChain Testnet</span>
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          Choose the blockchain network for your NFT minting
+                        </p>
+                      </div>
+
+                      {/* Mint Button */}
                         <Button
                           onClick={handleMint}
                           disabled={isMinting || currentAsset.isMinted}
