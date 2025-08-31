@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useStore } from '@/store/useStore';
 import { useToast } from '@/hooks/use-toast';
 import { useSEO, seoConfigs } from '@/hooks/useSEO';
+import GatewayFeatures from '@/components/GatewayFeatures';
 
 import { Sparkles, Loader2, Download, Share, Coins, ArrowLeft, Wallet } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -595,6 +596,38 @@ const Generator: React.FC = () => {
               </Card>
             </motion.div>
           </div>
+
+          {/* Gateway API Features - Show after asset is generated */}
+          {currentAsset && (
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.6 }}
+              className="mt-12"
+            >
+              <div className="text-center mb-8">
+                <h2 className="text-3xl font-bold mb-4">
+                  <span className="bg-gradient-primary bg-clip-text text-transparent">
+                    Advanced Cross-Chain Features
+                  </span>
+                </h2>
+                <p className="text-xl text-muted-foreground">
+                  Deploy your asset across multiple chains and process payments with stZETA
+                </p>
+              </div>
+
+              <GatewayFeatures
+                asset={currentAsset}
+                onDeploymentComplete={(universalAsset) => {
+                  console.log('🎉 Universal asset deployed:', universalAsset);
+                  toast({
+                    title: "Universal Asset Created!",
+                    description: `Your asset is now available across ${universalAsset.deployments.length} blockchain networks`,
+                  });
+                }}
+              />
+            </motion.div>
+          )}
         </motion.div>
       </div>
     </div>

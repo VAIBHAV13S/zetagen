@@ -1,6 +1,14 @@
 import { create } from 'zustand';
 import { callEdgeFunction, API_ENDPOINTS } from '@/lib/api';
 import { checkWalletConnection, watchAccountChanges, watchChainChanges, connectWallet } from '@/lib/wallet';
+import { 
+  deployAssetMultiChain, 
+  UniversalAsset, 
+  stZetaGateway, 
+  universalBridge,
+  SUPPORTED_CHAINS,
+  getTransferQuote
+} from '@/lib/gateway';
 
 export interface Asset {
   id: string;
@@ -36,6 +44,18 @@ interface AppState {
   selectedSourceChain: number;
   setSelectedSourceChain: (chainId: number) => void;
 
+  // Gateway API Features
+  universalAssets: UniversalAsset[];
+  isDeployingMultiChain: boolean;
+  isProcessingPayment: boolean;
+  isBridgingAsset: boolean;
+  selectedTargetChains: number[];
+  setSelectedTargetChains: (chains: number[]) => void;
+  deployAssetMultiChain: (asset: Asset) => Promise<UniversalAsset>;
+  processStZetaPayment: (amount: string, service: 'generation' | 'minting' | 'premium') => Promise<any>;
+  bridgeAssetToChain: (universalAssetId: string, fromChain: number, toChain: number) => Promise<any>;
+  getCrossChainQuote: (token: string, amount: string, fromChain: number, toChain: number) => Promise<any>;
+
   // Actions
   setCurrentAsset: (asset: Asset | null) => void;
   addAsset: (asset: Asset) => void;
@@ -64,6 +84,13 @@ export const useStore = create<AppState>((set, get) => ({
   currentPage: 'landing',
   galleryFilter: 'all',
   selectedSourceChain: 7001, // Default to ZetaChain Testnet
+  
+  // Gateway API initial state
+  universalAssets: [],
+  isDeployingMultiChain: false,
+  isProcessingPayment: false,
+  isBridgingAsset: false,
+  selectedTargetChains: [1, 56, 137, 7001], // Default to all supported chains
 
   // Wallet actions
   connectWallet: (address) => {
@@ -347,4 +374,112 @@ export const useStore = create<AppState>((set, get) => ({
   // UI actions
   setCurrentPage: (page) => set({ currentPage: page }),
   setGalleryFilter: (filter) => set({ galleryFilter: filter }),
+
+  // Gateway API actions
+  setSelectedTargetChains: (chains) => set({ selectedTargetChains: chains }),
+
+  deployAssetMultiChain: async (asset) => {
+    const walletAddress = get().walletAddress;
+    if (!walletAddress) {
+      throw new Error('Wallet not connected');
+    }
+
+    set({ isDeployingMultiChain: true });
+
+    try {
+      console.log('🚀 Deploying asset to multiple chains:', asset.prompt);
+      
+      const universalAsset = await deployAssetMultiChain(
+        {
+          id: asset.id,
+          prompt: asset.prompt,
+          imageUrl: asset.imageUrl,
+          metadata: asset.metadata
+        },
+        walletAddress,
+        get().selectedTargetChains
+      );
+
+      set((state) => ({
+        universalAssets: [universalAsset, ...state.universalAssets],
+        isDeployingMultiChain: false
+      }));
+
+      console.log('✅ Multi-chain deployment completed:', universalAsset);
+      return universalAsset;
+    } catch (error) {
+      console.error('❌ Multi-chain deployment failed:', error);
+      set({ isDeployingMultiChain: false });
+      throw error;
+    }
+  },
+
+  processStZetaPayment: async (amount, service) => {
+    const walletAddress = get().walletAddress;
+    if (!walletAddress) {
+      throw new Error('Wallet not connected');
+    }
+
+    set({ isProcessingPayment: true });
+
+    try {
+      console.log(`💰 Processing stZETA payment: ${amount} for ${service}`);
+      
+      const payment = await stZetaGateway.processPayment(
+        amount,
+        service,
+        walletAddress,
+        get().selectedTargetChains
+      );
+
+      set({ isProcessingPayment: false });
+      console.log('✅ Payment processed:', payment);
+      return payment;
+    } catch (error) {
+      console.error('❌ Payment processing failed:', error);
+      set({ isProcessingPayment: false });
+      throw error;
+    }
+  },
+
+  bridgeAssetToChain: async (universalAssetId, fromChain, toChain) => {
+    const walletAddress = get().walletAddress;
+    if (!walletAddress) {
+      throw new Error('Wallet not connected');
+    }
+
+    set({ isBridgingAsset: true });
+
+    try {
+      console.log(`🌉 Bridging asset ${universalAssetId} from ${fromChain} to ${toChain}`);
+      
+      const bridgeResult = await universalBridge.bridgeAssetToChain(
+        universalAssetId,
+        fromChain,
+        toChain,
+        walletAddress
+      );
+
+      set({ isBridgingAsset: false });
+      console.log('✅ Asset bridged successfully:', bridgeResult);
+      return bridgeResult;
+    } catch (error) {
+      console.error('❌ Asset bridge failed:', error);
+      set({ isBridgingAsset: false });
+      throw error;
+    }
+  },
+
+  getCrossChainQuote: async (token, amount, fromChain, toChain) => {
+    try {
+      console.log(`💱 Getting quote for ${amount} ${token} from ${fromChain} to ${toChain}`);
+      
+      const quote = await getTransferQuote(token, amount, fromChain, toChain);
+      console.log('✅ Quote received:', quote);
+      return quote;
+    } catch (error) {
+      console.error('❌ Quote fetch failed:', error);
+      throw error;
+    }
+  }
 }));

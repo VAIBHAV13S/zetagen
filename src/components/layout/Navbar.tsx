@@ -116,6 +116,9 @@ const Navbar = () => {
             <NavLink to="/generator" isActive={isActive('/generator')}>
               Generator
             </NavLink>
+            <NavLink to="/demo" isActive={isActive('/demo')}>
+              Gateway Demo
+            </NavLink>
             <NavLink to="/gallery" isActive={isActive('/gallery')}>
               Gallery
             </NavLink>

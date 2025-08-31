@@ -10,6 +10,7 @@ import Footer from "./components/layout/Footer";
 import Landing from "./pages/Landing";
 import Generator from "./pages/Generator";
 import Gallery from "./pages/Gallery";
+import GatewayDemo from "./pages/GatewayDemo";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const AppContent = () => {
             <Route path="/" element={<Landing />} />
             <Route path="/generator" element={<Generator />} />
             <Route path="/gallery" element={<Gallery />} />
+            <Route path="/demo" element={<GatewayDemo />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>
