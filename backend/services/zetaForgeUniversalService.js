@@ -421,6 +421,11 @@ class EnhancedZetaForgeUniversalService {
                 console.log(`💰 Optimized fee: ${ethers.formatEther(fee)} ZETA, Gas: ${gasEstimate.toString()}`);
 
                 // Execute with optimized parameters
+                // Defensive check: ensure the contract exposes the function
+                if (!this.universalContract || !this.universalContract.crossChainMint) {
+                    throw new Error('Contract method crossChainMint not available on universalContract; check ABI and contract address');
+                }
+
                 const tx = await this.universalContract.crossChainMint(
                     walletAddress,
                     sourceChain,
@@ -808,22 +813,71 @@ class EnhancedZetaForgeUniversalService {
     async getOptimizedTransactionParams(walletAddress, sourceChain, assetId, prompt, metadataURI, traits) {
         // Get current fee for the chain
         const fee = await this.universalContract.getChainFee(sourceChain);
-        
-        // Estimate gas with buffer
-        const gasEstimate = await this.universalContract.estimateGas.crossChainMint(
-            walletAddress,
-            sourceChain,
-            assetId,
-            prompt,
-            metadataURI,
-            traits || '',
-            { value: fee }
-        );
+
+        // Try multiple strategies to estimate gas in a robust way. Some ethers objects
+        // may not expose the auto-generated estimateGas.<fn> helpers depending on
+        // how the contract instance was created or ABI shape. We fallback to
+        // populateTransaction + provider.estimateGas and finally to a safe default.
+        let gasEstimate;
+        try {
+            // Preferred: direct estimate helper
+            if (this.universalContract.estimateGas && typeof this.universalContract.estimateGas.crossChainMint === 'function') {
+                gasEstimate = await this.universalContract.estimateGas.crossChainMint(
+                    walletAddress,
+                    sourceChain,
+                    assetId,
+                    prompt,
+                    metadataURI,
+                    traits || '',
+                    { value: fee }
+                );
+
+            // Fallback: indexed access (some builds expose signatures)
+            } else if (this.universalContract.estimateGas && this.universalContract.estimateGas['crossChainMint']) {
+                gasEstimate = await this.universalContract.estimateGas['crossChainMint'](
+                    walletAddress,
+                    sourceChain,
+                    assetId,
+                    prompt,
+                    metadataURI,
+                    traits || '',
+                    { value: fee }
+                );
+
+            // Fallback: populate transaction and ask provider to estimate
+            } else if (this.universalContract.populateTransaction && typeof this.universalContract.populateTransaction.crossChainMint === 'function') {
+                const txRequest = await this.universalContract.populateTransaction.crossChainMint(
+                    walletAddress,
+                    sourceChain,
+                    assetId,
+                    prompt,
+                    metadataURI,
+                    traits || '',
+                    { value: fee }
+                );
+
+                // Ensure to set `to` and `value` when estimating
+                const estimateRequest = {
+                    to: process.env.ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS,
+                    data: txRequest.data,
+                    value: txRequest.value || fee
+                };
+                gasEstimate = await this.provider.estimateGas(estimateRequest);
+
+            // Final fallback: reasonable default
+            } else {
+                console.warn('⚠️ Could not find a gas estimation helper for crossChainMint; using default gas estimate');
+                gasEstimate = BigInt(200000);
+            }
+        } catch (estErr) {
+            console.warn('⚠️ Gas estimation failed, falling back to default:', estErr.message);
+            gasEstimate = BigInt(200000);
+        }
 
         // Apply gas multiplier but cap at max limit
         const bufferedGas = gasEstimate * BigInt(Math.floor(this.config.gasMultiplier * 100)) / BigInt(100);
-        const finalGasLimit = bufferedGas > BigInt(this.config.maxGasLimit) 
-            ? BigInt(this.config.maxGasLimit) 
+        const finalGasLimit = bufferedGas > BigInt(this.config.maxGasLimit)
+            ? BigInt(this.config.maxGasLimit)
             : bufferedGas;
 
         // Get current gas price

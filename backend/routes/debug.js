@@ -1,7 +1,90 @@
 import express from 'express';
 import { asyncHandler } from '../middleware/errorHandler.js';
-
+import { ethers } from 'ethers';
 const router = express.Router();
+
+// GET /api/debug/contract?assetId=... - Check contract code and asset mapping
+router.get('/contract', asyncHandler(async (req, res) => {
+  const assetId = req.query.assetId;
+
+  if (!process.env.ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS) {
+    return res.status(500).json({ success: false, error: 'ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS not configured' });
+  }
+
+  if (!assetId) {
+    return res.status(400).json({ success: false, error: 'assetId query parameter is required' });
+  }
+
+  try {
+    // Load ABI from file
+    const fs = await import('fs/promises');
+    const path = await import('path');
+    const { fileURLToPath } = await import('url');
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const abiPath = path.join(__dirname, '../abi/ZetaForgeUniversalV2.json');
+    const abiData = await fs.readFile(abiPath, 'utf8');
+    const abiJson = JSON.parse(abiData);
+    const abi = Array.isArray(abiJson) ? abiJson : (abiJson.abi || []);
+
+    const provider = new ethers.JsonRpcProvider(process.env.ZETACHAIN_RPC_URL);
+    const contractAddress = process.env.ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS;
+
+    // Check if contract has code at address
+    const code = await provider.getCode(contractAddress);
+
+    if (!code || code === '0x') {
+      return res.json({ success: true, contract: { address: contractAddress, hasCode: false, code }, message: 'No contract code found at address' });
+    }
+
+    const contract = new ethers.Contract(contractAddress, abi, provider);
+
+    // Get available function names from the ABI/interface
+    const functions = [];
+    try {
+      const iface = contract.interface;
+      if (iface && iface.fragments) {
+        iface.fragments.forEach(f => {
+          if (f.type === 'function') functions.push(f.name || f.format());
+        });
+      } else if (iface && iface.functions) {
+        Object.keys(iface.functions).forEach(fn => functions.push(fn));
+      }
+    } catch (err) {
+      // ignore
+    }
+
+    // Try to get token mapping for assetId
+    let tokenId = null;
+    let assetMetadata = null;
+    try {
+      tokenId = await contract.getTokenIdByAssetId(assetId);
+      // If tokenId is non-zero, fetch metadata
+      if (tokenId && tokenId.toString() !== '0') {
+        assetMetadata = await contract.getAssetMetadata(tokenId);
+      }
+    } catch (err) {
+      // return any error in field
+      tokenId = { error: err.message };
+    }
+
+    return res.json({
+      success: true,
+      contract: {
+        address: contractAddress,
+        hasCode: true,
+        code: code,
+        functions: functions.slice(0, 200)
+      },
+      assetId,
+      tokenId: tokenId ? (tokenId.toString ? tokenId.toString() : tokenId) : null,
+      assetMetadata
+    });
+
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+}));
 
 // GET /api/debug/status - Get comprehensive backend status
 router.get('/debug/status', asyncHandler(async (req, res) => {
