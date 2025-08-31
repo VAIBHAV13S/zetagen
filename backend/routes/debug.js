@@ -68,6 +68,22 @@ router.get('/contract', asyncHandler(async (req, res) => {
       tokenId = { error: err.message };
     }
 
+    // Convert BigInt values to strings for JSON serialization
+    const serializeBigInt = (obj) => {
+      if (typeof obj === 'bigint') {
+        return obj.toString();
+      } else if (Array.isArray(obj)) {
+        return obj.map(serializeBigInt);
+      } else if (obj && typeof obj === 'object') {
+        const result = {};
+        for (const [key, value] of Object.entries(obj)) {
+          result[key] = serializeBigInt(value);
+        }
+        return result;
+      }
+      return obj;
+    };
+
     return res.json({
       success: true,
       contract: {
@@ -77,8 +93,8 @@ router.get('/contract', asyncHandler(async (req, res) => {
         functions: functions.slice(0, 200)
       },
       assetId,
-      tokenId: tokenId ? (tokenId.toString ? tokenId.toString() : tokenId) : null,
-      assetMetadata
+      tokenId: tokenId ? (tokenId.toString ? tokenId.toString() : serializeBigInt(tokenId)) : null,
+      assetMetadata: assetMetadata ? serializeBigInt(assetMetadata) : null
     });
 
   } catch (error) {

@@ -388,57 +388,91 @@ class EnhancedZetaForgeUniversalService {
     }
 
     /**
-     * Enhanced cross-chain mint with retry mechanism and gas optimization
+     * Direct mint asset (for testing, bypasses cross-chain relayer)
      */
-    async crossChainMintAsset(walletAddress, sourceChain, assetId, prompt, metadataURI, traits) {
+    async mintAsset(walletAddress, sourceChain, assetId, prompt, metadataURI, traits) {
         // Check if service is available
         if (!this.universalContract) {
             throw new Error('Universal contract is not initialized. Please check your environment variables (ZETACHAIN_RPC_URL, ZETACHAIN_PRIVATE_KEY, ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS).');
         }
 
         const startTime = Date.now();
-        let attempt = 0;
 
-        while (attempt < this.config.maxRetries) {
+        try {
+            console.log(`🪙 Direct mint for asset ${assetId}`);
+
+            // Enhanced pre-checks
+            await this.validateMintParameters(walletAddress, assetId, prompt, metadataURI, sourceChain);
+
+            // Check asset status
+            const alreadyMinted = await this.universalContract.isAssetMinted(assetId);
+            if (alreadyMinted) {
+                throw new Error('Asset already minted');
+            }
+
+            // Fetch metadata from URI to construct the struct
+            let metadataResponse;
             try {
-                attempt++;
-                console.log(`🌍 Cross-chain mint attempt ${attempt}/${this.config.maxRetries} for asset ${assetId}`);
-
-                // Enhanced pre-checks
-                await this.validateMintParameters(walletAddress, assetId, prompt, metadataURI, sourceChain);
-
-                // Check asset status
-                const alreadyMinted = await this.universalContract.isAssetMinted(assetId);
-                if (alreadyMinted) {
-                    throw new Error('Asset already minted');
+                metadataResponse = await fetch(metadataURI);
+                if (!metadataResponse.ok) {
+                    throw new Error(`Failed to fetch metadata: ${metadataResponse.status}`);
                 }
+                const metadataJson = await metadataResponse.json();
 
-                // Get optimized gas and fee estimates
-                const { fee, gasEstimate, gasPrice } = await this.getOptimizedTransactionParams(
-                    walletAddress, sourceChain, assetId, prompt, metadataURI, traits
-                );
-
-                console.log(`💰 Optimized fee: ${ethers.formatEther(fee)} ZETA, Gas: ${gasEstimate.toString()}`);
-
-                // Execute with optimized parameters
-                // Defensive check: ensure the contract exposes the function
-                if (!this.universalContract || !this.universalContract.crossChainMint) {
-                    throw new Error('Contract method crossChainMint not available on universalContract; check ABI and contract address');
-                }
-
-                const tx = await this.universalContract.crossChainMint(
-                    walletAddress,
-                    sourceChain,
+                // Construct AssetMetadata struct
+                const assetMetadata = {
                     assetId,
-                    prompt,
+                    name: metadataJson.name || 'ZetaForge AI Generated',
+                    description: metadataJson.description || prompt,
+                    imageUrl: metadataJson.image || '',
+                    traitTypes: metadataJson.attributes ? metadataJson.attributes.map(attr => attr.trait_type || '') : [],
+                    traitValues: metadataJson.attributes ? metadataJson.attributes.map(attr => attr.value || '') : [],
+                    timestamp: Math.floor(Date.now() / 1000),
+                    sourceChain,
+                    originalMinter: walletAddress
+                };
+
+                // Get the current mint price from the contract
+                const mintPrice = await this.universalContract.mintPrice();
+                const fee = mintPrice; // Use the contract's mint price
+                
+                // Use contract interface to encode the function call
+                const iface = this.universalContract.interface;
+                const functionData = iface.encodeFunctionData('mintAsset', [
+                    walletAddress,
+                    assetId,
                     metadataURI,
-                    traits || '',
-                    {
-                        value: fee,
-                        gasLimit: gasEstimate,
-                        gasPrice: gasPrice
-                    }
-                );
+                    assetMetadata
+                ]);
+
+                // Estimate gas using the encoded data
+                const gasEstimate = await this.provider.estimateGas({
+                    to: process.env.ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS,
+                    data: functionData,
+                    value: fee,
+                    from: this.wallet.address
+                });
+
+                // Apply gas multiplier but cap at max limit
+                const bufferedGas = gasEstimate * BigInt(Math.floor(this.config.gasMultiplier * 100)) / BigInt(100);
+                const finalGasLimit = bufferedGas > BigInt(this.config.maxGasLimit)
+                    ? BigInt(this.config.maxGasLimit)
+                    : bufferedGas;
+
+                // Get current gas price
+                const feeData = await this.provider.getFeeData();
+                const gasPrice = feeData.gasPrice;
+
+                console.log(`💰 Direct mint fee: ${ethers.formatEther(fee)} ZETA, Gas: ${gasEstimate.toString()}`);
+
+                // Send transaction using the encoded function data
+                const tx = await this.wallet.sendTransaction({
+                    to: process.env.ZETAFORGE_UNIVERSAL_CONTRACT_ADDRESS,
+                    data: functionData,
+                    value: fee,
+                    gasLimit: finalGasLimit,
+                    gasPrice: gasPrice
+                });
 
                 console.log(`📄 Transaction submitted: ${tx.hash}`);
 
@@ -465,22 +499,17 @@ class EnhancedZetaForgeUniversalService {
                     gasPrice: ethers.formatUnits(receipt.gasPrice || gasPrice, 'gwei'),
                     transactionTime: Date.now() - startTime,
                     contract: 'universal',
-                    attempt: attempt,
-                    mintFee: ethers.formatEther(fee),
-                    retryAttempts: attempt - 1
+                    mintFee: ethers.formatEther(fee)
                 };
 
-            } catch (error) {
-                console.error(`❌ Mint attempt ${attempt} failed:`, error.message);
-
-                if (attempt >= this.config.maxRetries) {
-                    this.updateMetrics(false, Date.now() - startTime);
-                    throw new Error(`Cross-chain mint failed after ${this.config.maxRetries} attempts: ${error.message}`);
-                }
-
-                // Wait before retry
-                await this.delay(this.config.retryDelay * attempt);
+            } catch (fetchError) {
+                throw new Error(`Failed to fetch or parse metadata: ${fetchError.message}`);
             }
+
+        } catch (error) {
+            console.error(`❌ Direct mint failed:`, error.message);
+            this.updateMetrics(false, Date.now() - startTime);
+            throw new Error(`Direct mint failed: ${error.message}`);
         }
     }
 
@@ -1035,6 +1064,9 @@ export default EnhancedZetaForgeUniversalService;
 // Export individual functions that routes expect
 export const crossChainMintAsset = (walletAddress, sourceChain, assetId, prompt, metadataURI, traits) => 
     zetaForgeService.crossChainMintAsset(walletAddress, sourceChain, assetId, prompt, metadataURI, traits);
+
+export const mintAsset = (walletAddress, sourceChain, assetId, prompt, metadataURI, traits) => 
+    zetaForgeService.mintAsset(walletAddress, sourceChain, assetId, prompt, metadataURI, traits);
 
 export const batchMintAssets = (mintRequests, batchSize) => 
     zetaForgeService.batchMintAssets(mintRequests, batchSize);
